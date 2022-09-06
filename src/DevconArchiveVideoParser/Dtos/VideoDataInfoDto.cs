@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace DevconArchiveVideoParser
+namespace DevconArchiveVideoParser.Dtos
 {
     internal class VideoDataInfoDto
     {
@@ -15,7 +15,5 @@ namespace DevconArchiveVideoParser
         public string? Type { get; set; }
         public string? Track { get; set; }
         public string? YoutubeUrl { get; set; }
-        
-
     }
 }

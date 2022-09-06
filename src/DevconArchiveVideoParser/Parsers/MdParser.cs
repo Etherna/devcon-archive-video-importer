@@ -1,23 +1,25 @@
-﻿using System;
+﻿using DevconArchiveVideoParser.Dtos;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 
-namespace DevconArchiveVideoParser
+namespace DevconArchiveVideoParser.Parsers
 {
-    internal class ReaderParser
+    internal class MdParser
     {
         public static readonly string[] _keywordForArrayString = { "KEYWORDS", "TAGS", "SPEAKERS" };
         public static readonly string[] _keywordSkips = { "IMAGE", "IMAGEURL" };
         public static readonly string[] _keywordNames = { "IMAGE", "IMAGEURL", "EDITION", "TITLE", "DESCRIPTION", "YOUTUBEURL", "IPFSHASH", "DURATION", "EXPERTISE", "TYPE", "TRACK", "KEYWORDS", "TAGS", "SPEAKERS" };
 
-        public static IEnumerable<VideoDataInfoDto> StartParser(string folderRootPath)
+        public static IEnumerable<VideoDataInfoDto> ToVideoDataDtos(string folderRootPath)
         {
             var videoDataInfoDtos = new List<VideoDataInfoDto>();
             var files = Directory.GetFiles(folderRootPath, "*.md", SearchOption.AllDirectories);
+
+            Console.WriteLine($"Total files: {files.Length}");
 
             foreach (var sourceFile in files)
             {
@@ -46,7 +48,7 @@ namespace DevconArchiveVideoParser
                             VideoDataInfoDto? videoDataInfoDto = null;
                             try
                             {
-                                videoDataInfoDto = JsonSerializer.Deserialize<VideoDataInfoDto>( 
+                                videoDataInfoDto = JsonSerializer.Deserialize<VideoDataInfoDto>(
                                     itemConvertedToJson.ToString(),
                                     new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
                             }
@@ -54,7 +56,7 @@ namespace DevconArchiveVideoParser
                             catch (Exception ex)
 #pragma warning restore CA1031
                             {
-                                Console.WriteLine($"Unable to parse file: {sourceFile}" + ex);
+                                Console.WriteLine($"{ex.Message} \n Unable to parse file: {sourceFile}");
                             }
 
                             markerLine = 0;
@@ -83,9 +85,20 @@ namespace DevconArchiveVideoParser
             if (string.IsNullOrWhiteSpace(line))
                 return "";
 
-            if (_keywordForArrayString.Any(keyArrayString =>
-                    line.StartsWith(keyArrayString, StringComparison.InvariantCultureIgnoreCase)))
-                line = line.Replace("'", "\"", StringComparison.InvariantCultureIgnoreCase); //Array of string change from ' to "
+            // Fix error declaration of speakers.
+            line = line.Replace("\"G. Nicholas D'Andrea\"", "'G. Nicholas D\"Andrea'", StringComparison.InvariantCultureIgnoreCase);
+            if (line.Contains("", StringComparison.InvariantCultureIgnoreCase))
+
+
+                if (_keywordForArrayString.Any(keyArrayString =>
+                        line.StartsWith(keyArrayString, StringComparison.InvariantCultureIgnoreCase)))
+                {
+                    //array of string change from ' to "
+                    //use TEMPSINGLEQUOTE for mange the case like        'Piotrek "Viggith" Janiuk'
+                    line = line.Replace("'", "TEMPSINGLEQUOTE", StringComparison.InvariantCultureIgnoreCase);
+                    line = line.Replace("\"", "'", StringComparison.InvariantCultureIgnoreCase);
+                    line = line.Replace("TEMPSINGLEQUOTE", "\"", StringComparison.InvariantCultureIgnoreCase);
+                }
 
             // Prevent multiline description error 
             if (!_keywordNames.Any(keywordName =>
@@ -104,7 +117,7 @@ namespace DevconArchiveVideoParser
                 !formatedString.EndsWith("\"", StringComparison.InvariantCultureIgnoreCase))
                 formatedString += "\"";
 
-            return formatedString;
+            return formatedString.Replace("\t", " ", StringComparison.InvariantCultureIgnoreCase); // Replace \t \ with space
         }
 
         private static string ReplaceFirstOccurrence(string source, string find, string replace)
