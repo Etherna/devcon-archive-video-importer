@@ -30,7 +30,7 @@ namespace DevconArchiveVideoParser
                 }
             }
 
-            // Request connection urls.
+            // Request missing params.
             Console.WriteLine();
             Console.WriteLine("Source folder path with *.md files to import:");
             sourceFolderPath = ReadStringIfEmpty(sourceFolderPath);
