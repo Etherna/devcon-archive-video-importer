@@ -6,25 +6,61 @@ namespace DevconArchiveVideoParser
 {
     internal class Program
     {
+        // Consts.
+        private const string HelpText =
+            "DevconArchiveVideoParser help:\n\n" +
+            "-s\tSource folder path with *.md files to import\n" +
+            "-o\tOutput csv file path\n" +
+            "\n" +
+            "-h\tPrint help\n";
+
         static async Task Main(string[] args)
         {
-            if (args is null ||
-                args.Length < 0)
+            // Parse arguments.
+            string? sourceFolderPath = null;
+            string? outputCsvFilepath = null;
+            for (int i = 0; i < args.Length; i++)
             {
-                Console.WriteLine("Missing read path");
-                return;
+                switch (args[i])
+                {
+                    case "-s": sourceFolderPath = args[++i]; break;
+                    case "-o": outputCsvFilepath = args[++i]; break;
+                    case "-h": Console.Write(HelpText); return;
+                    default: throw new ArgumentException(args[i] + " is not a valid argument");
+                }
             }
-            if (args.Length < 1)
-            {
-                Console.WriteLine("Missing file CSV destination path");
-                return;
-            }
+
+            // Request missing params.
+            Console.WriteLine();
+            Console.WriteLine("Source folder path with *.md files to import:");
+            sourceFolderPath = ReadStringIfEmpty(sourceFolderPath);
+
+            Console.WriteLine();
+            Console.WriteLine("Output csv filepath:");
+            outputCsvFilepath = ReadStringIfEmpty(outputCsvFilepath); 
+            Console.WriteLine();
 
             // Read from files md.
-            var videoDtos = MdParser.ToVideoDataDtos(args[0]);
+            var videoDtos = MdParser.ToVideoDataDtos(sourceFolderPath);
 
             // Convert all dto to csv.
-            await CsvParser.WriteFileAsync(args[1], videoDtos);
+            await CsvParser.WriteFileAsync(outputCsvFilepath, videoDtos);
+        }
+
+        private static string ReadStringIfEmpty(string? strValue)
+        {
+            if (string.IsNullOrWhiteSpace(strValue))
+            {
+                while (string.IsNullOrWhiteSpace(strValue))
+                {
+                    strValue = Console.ReadLine();
+                    if (string.IsNullOrWhiteSpace(strValue))
+                        Console.WriteLine("*Empty string not allowed*");
+                }
+            }
+            else Console.WriteLine(strValue);
+
+            return strValue;
         }
     }
 }
