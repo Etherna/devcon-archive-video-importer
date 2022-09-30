@@ -38,7 +38,7 @@ jobs:
         shell: bash
         run: |
           tag=$(git describe --tags --abbrev=0)
-          release_name="App-$tag-${{ matrix.kind }}"
+          release_name="devcon-archive-video-parser-$tag-${{ matrix.kind }}"
           # Build everything
           dotnet publish src/DevconArchiveVideoParser/DevconArchiveVideoParser.csproj --framework net6.0 --runtime "${{ matrix.target }}" "${{ matrix.frameworktype }}" -c Release -o "$release_name"
           # Pack files
