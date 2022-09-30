@@ -3,11 +3,16 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.3.32819.101
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DevconArchiveVideoParser", "src\DevconArchiveVideoParser\DevconArchiveVideoParser.csproj", "{5A408DD5-D8D8-42F4-A17B-389679AB074C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DevconArchiveVideoParser", "src\DevconArchiveVideoParser\DevconArchiveVideoParser.csproj", "{5A408DD5-D8D8-42F4-A17B-389679AB074C}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{33106618-5341-424E-89A2-3C1F076605B4}"
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{B52D3F16-059F-49E6-8B43-3431EE0CD06D}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\publish-app-release.yml = .github\workflows\publish-app-release.yml
 	EndProjectSection
 EndProject
 Global
@@ -23,6 +28,9 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{B52D3F16-059F-49E6-8B43-3431EE0CD06D} = {33106618-5341-424E-89A2-3C1F076605B4}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {A72F6428-DA1E-403B-87E7-D9BF86F27FA1}
