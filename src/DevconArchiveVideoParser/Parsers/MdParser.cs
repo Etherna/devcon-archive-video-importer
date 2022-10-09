@@ -77,7 +77,7 @@ namespace DevconArchiveVideoParser.Parsers
                 }
             }
 
-            return videoDataInfoDtos;
+            return videoDataInfoDtos.OrderByDescending(item => item.Edition);
         }
 
         private static string FormatLineForJson(string line, bool havePreviusRow, List<string> descriptionExtraRows)
