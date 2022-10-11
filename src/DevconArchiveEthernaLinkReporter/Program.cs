@@ -1,31 +1,30 @@
-﻿using System;
-using System.Threading.Tasks;
-using DevconArchiveVideoParser.Parsers;
+﻿using CsvHelper;
+using System;
 
-namespace DevconArchiveVideoParser
+namespace DevconArchiveEthernaLinkReporter
 {
     internal class Program
     {
         // Consts.
         private const string HelpText =
-            "DevconArchiveVideoParser help:\n\n" +
-            "-s\tSource folder path with *.md files to import\n" +
-            "-o\tOutput csv file path\n" +
+            "DevconArchiveEthernaLinkReporter help:\n\n" +
+            "-d\tDestination folder path with *.md files to modify\n" +
+            "-o\tImporter output csv file path\n" +
             "\n" +
             "-h\tPrint help\n";
 
         // Methods.
-        static async Task Main(string[] args)
+        static void Main(string[] args)
         {
             // Parse arguments.
-            string? sourceFolderPath = null;
-            string? outputCsvFilepath = null;
+            string? destinationFolderPath = null;
+            string? importerOutputCsvFilepath = null;
             for (int i = 0; i < args.Length; i++)
             {
                 switch (args[i])
                 {
-                    case "-s": sourceFolderPath = args[++i]; break;
-                    case "-o": outputCsvFilepath = args[++i]; break;
+                    case "-d": destinationFolderPath = args[++i]; break;
+                    case "-o": importerOutputCsvFilepath = args[++i]; break;
                     case "-h": Console.Write(HelpText); return;
                     default: throw new ArgumentException(args[i] + " is not a valid argument");
                 }
@@ -33,19 +32,21 @@ namespace DevconArchiveVideoParser
 
             // Request missing params.
             Console.WriteLine();
-            Console.WriteLine("Source folder path with *.md files to import:");
-            sourceFolderPath = ReadStringIfEmpty(sourceFolderPath);
+            Console.WriteLine("Destination folder path with *.md files to modify:");
+            destinationFolderPath = ReadStringIfEmpty(destinationFolderPath);
 
             Console.WriteLine();
-            Console.WriteLine("Output csv filepath:");
-            outputCsvFilepath = ReadStringIfEmpty(outputCsvFilepath); 
+            Console.WriteLine("Importer output csv filepath:");
+            importerOutputCsvFilepath = ReadStringIfEmpty(importerOutputCsvFilepath);
             Console.WriteLine();
 
-            // Read from files md.
-            var videoDtos = MdParser.ToVideoDataDtos(sourceFolderPath);
+            // Parse importer output.
+            var records = Parsers.CsvParser.GetVideoRecords(importerOutputCsvFilepath);
 
-            // Convert all dto to csv.
-            await CsvParser.WriteFileAsync(outputCsvFilepath, videoDtos);
+            // Parse destination directory.
+
+            // Update destination directory.
+
         }
 
         private static string ReadStringIfEmpty(string? strValue)

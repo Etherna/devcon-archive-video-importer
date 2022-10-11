@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "DevconArchiveEthernaLinkReporter": {
+      "commandName": "Project",
+      "commandLineArgs": "-d C:\\Users\\dacor\\Desktop\\devcon\\devcon-website\\src\\content\\archive\\videos -o C:\\Users\\dacor\\Desktop\\output.csv"
+    }
+  }
+}
