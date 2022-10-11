@@ -1,5 +1,7 @@
-﻿using CsvHelper;
+﻿using DevconArchiveEthernaLinkReporter.Models;
 using System;
+using System.IO;
+using System.Linq;
 
 namespace DevconArchiveEthernaLinkReporter
 {
@@ -41,12 +43,23 @@ namespace DevconArchiveEthernaLinkReporter
             Console.WriteLine();
 
             // Parse importer output.
-            var records = Parsers.CsvParser.GetVideoRecords(importerOutputCsvFilepath);
+            var csvVideos = Parsers.CsvParser.GetVideoRecords(importerOutputCsvFilepath);
 
             // Parse destination directory.
+            var mdFilesPath = Directory.GetFiles(destinationFolderPath, "*.md", SearchOption.AllDirectories);
+            var mdFiles = mdFilesPath.Select(p => new MdFile(p, File.ReadLines(p)));
 
-            // Update destination directory.
+            // Update md files.
+            foreach (var video in csvVideos.Where(v => v.ImportStatus == "Processed"))
+            {
+                foreach (var file in mdFiles.Where(f => f.YoutubeUrl == video.YoutubeUrl))
+                {
+                    file.EthernaIndex = video.EmbedIndexLink;
+                    file.EthernaPermalink = video.EmbedDecentralizedLink;
 
+                    File.WriteAllLines(file.Path, file.Lines);
+                }
+            }
         }
 
         private static string ReadStringIfEmpty(string? strValue)
