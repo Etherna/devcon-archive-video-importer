@@ -14,6 +14,7 @@ namespace DevconArchiveVideoParser
             "\n" +
             "-h\tPrint help\n";
 
+        // Methods.
         static async Task Main(string[] args)
         {
             // Parse arguments.
