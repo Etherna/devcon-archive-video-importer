@@ -91,7 +91,8 @@ namespace DevconArchiveVideoParser.Parsers
 
 
                 if (_keywordForArrayString.Any(keyArrayString =>
-                        line.StartsWith(keyArrayString, StringComparison.InvariantCultureIgnoreCase)))
+                        line.StartsWith(keyArrayString, StringComparison.InvariantCultureIgnoreCase) &&
+                        line.Contains("['", StringComparison.InvariantCultureIgnoreCase)))
                 {
                     //array of string change from ' to "
                     //use TEMPSINGLEQUOTE for mange the case like        'Piotrek "Viggith" Janiuk'
