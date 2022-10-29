@@ -1,4 +1,4 @@
-﻿using DevconArchiveVideoParser.Dtos;
+﻿using Etherna.DevconArchiveVideoParser.CommonData.Models;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -14,9 +14,9 @@ namespace DevconArchiveVideoParser.Parsers
         public static readonly string[] _keywordSkips = { "IMAGE", "IMAGEURL" };
         public static readonly string[] _keywordNames = { "IMAGE", "IMAGEURL", "EDITION", "TITLE", "DESCRIPTION", "YOUTUBEURL", "IPFSHASH", "DURATION", "EXPERTISE", "TYPE", "TRACK", "KEYWORDS", "TAGS", "SPEAKERS" };
 
-        public static IEnumerable<VideoDataInfoDto> ToVideoDataDtos(string folderRootPath)
+        public static IEnumerable<VideoMDData> ToVideoDataDtos(string folderRootPath)
         {
-            var videoDataInfoDtos = new List<VideoDataInfoDto>();
+            var videoDataInfoDtos = new List<VideoMDData>();
             var files = Directory.GetFiles(folderRootPath, "*.md", SearchOption.AllDirectories);
 
             Console.WriteLine($"Total files: {files.Length}");
@@ -45,12 +45,14 @@ namespace DevconArchiveVideoParser.Parsers
                         {
                             itemConvertedToJson.AppendLine("}");
 
-                            VideoDataInfoDto? videoDataInfoDto = null;
+                            VideoMDData? videoDataInfoDto = null;
                             try
                             {
-                                videoDataInfoDto = JsonSerializer.Deserialize<VideoDataInfoDto>(
+                                videoDataInfoDto = JsonSerializer.Deserialize<VideoMDData>(
                                     itemConvertedToJson.ToString(),
                                     new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                                videoDataInfoDto!.Id = sourceFile!.Replace(folderRootPath, "", StringComparison.InvariantCultureIgnoreCase);
+                                videoDataInfoDto!.MdFilepath = sourceFile;
                             }
 #pragma warning disable CA1031 // Ignore exception
                             catch (Exception ex)
