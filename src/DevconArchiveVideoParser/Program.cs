@@ -189,11 +189,9 @@ namespace DevconArchiveVideoParser
                     else
                     {
                         // Change metadata info.
-                        //TODO create method for update metadata.
-                        var hashReferenceMetadata = await videoUploaderService.UploadMetadataAsync(manifest, pinVideo).ConfigureAwait(false);
-                        var indexVideoId = await indexerServices.IndexManifestAsync(hashReferenceMetadata, mdFile.IndexVideoId).ConfigureAwait(false);
+                        var hashReferenceMetadata = await videoUploaderService.UploadMetadataAsync(manifest, mdFile, pinVideo).ConfigureAwait(false);
+                        var indexVideoId = await indexerServices.IndexManifestAsync(hashReferenceMetadata, mdFile).ConfigureAwait(false);
                     }
-
 
                     Console.ForegroundColor = ConsoleColor.DarkGreen;
                     Console.WriteLine($"#{videoCount} Video imported successfully");

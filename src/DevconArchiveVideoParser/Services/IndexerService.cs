@@ -1,4 +1,5 @@
-﻿using Etherna.DevconArchiveVideoParser.CommonData.Json;
+﻿using Etherna.BeeNet;
+using Etherna.DevconArchiveVideoParser.CommonData.Json;
 using Etherna.DevconArchiveVideoParser.CommonData.Models;
 using Etherna.DevconArchiveVideoParser.CommonData.Requests;
 using Etherna.DevconArchiveVideoParser.CommonData.Responses;
@@ -29,30 +30,40 @@ namespace Etherna.DevconArchiveVideoParser.Services
         // Methods.
         public async Task<string> IndexManifestAsync(
             string hashReferenceMetadata,
-            string? videoIndexIdReference)
+            MDFileData mdFileData)
         {
-            var httpGetResponse = await httpClient.GetAsync(new Uri(indexUrl + INDEX_API_CREATEBATCH + $"/{videoIndexIdReference}")).ConfigureAwait(false);
-            var haveIndexLink = httpGetResponse.StatusCode == System.Net.HttpStatusCode.OK;
+            if (mdFileData is null)
+                throw new ArgumentNullException(nameof(mdFileData));
+
+            var haveIndexLink = false;
+            if (!string.IsNullOrWhiteSpace(mdFileData.IndexVideoId))
+            {
+                var httpGetResponse = await httpClient.GetAsync(new Uri(indexUrl + INDEX_API_CREATEBATCH + $"/{mdFileData.IndexVideoId}")).ConfigureAwait(false);
+                haveIndexLink = httpGetResponse.StatusCode == System.Net.HttpStatusCode.OK;
+            }
 
             HttpResponseMessage httpResponse;
             if (haveIndexLink)
             {
                 // Update manifest index.
-                Console.WriteLine($"Update Index: {videoIndexIdReference}\t{hashReferenceMetadata}");
+                Console.WriteLine($"Update Index: {mdFileData!.IndexVideoId}\t{hashReferenceMetadata}");
                 using var httpContent = new StringContent("{}", Encoding.UTF8, "application/json");
-                httpResponse = await httpClient.PutAsync(new Uri(indexUrl + INDEX_API_CREATEBATCH + $"/{videoIndexIdReference}?newHash={hashReferenceMetadata}"), httpContent).ConfigureAwait(false);
+                httpResponse = await httpClient.PutAsync(new Uri(indexUrl + INDEX_API_CREATEBATCH + $"/{mdFileData!.IndexVideoId}?newHash={hashReferenceMetadata}"), httpContent).ConfigureAwait(false);
                 httpResponse.EnsureSuccessStatusCode();
-                return videoIndexIdReference!;
+                return mdFileData.IndexVideoId!;
             }
             else
             {
                 // Create new manifest index.
-                Console.WriteLine($"Create Index: {videoIndexIdReference}\t{hashReferenceMetadata}");
+                Console.WriteLine($"Create Index: {hashReferenceMetadata}");
                 var indexManifestRequest = new IndexManifestRequest(hashReferenceMetadata);
                 using var httpContent = new StringContent(JsonUtility.ToJson(indexManifestRequest), Encoding.UTF8, "application/json");
                 httpResponse = await httpClient.PostAsync(new Uri(indexUrl + INDEX_API_CREATEBATCH), httpContent).ConfigureAwait(false);
                 httpResponse.EnsureSuccessStatusCode();
-                return await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
+                var indexVideoId =  await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
+                mdFileData.SetEthernaIndex(indexVideoId);
+
+                return indexVideoId;
             }
         }
 

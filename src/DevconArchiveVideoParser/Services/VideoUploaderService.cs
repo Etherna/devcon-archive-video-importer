@@ -145,13 +145,11 @@ namespace Etherna.DevconArchiveVideoParser.Services
                 }
 
                 // Upload metadata.
-
-                // Upload metadata.
                 var hashMetadataReference = await UploadMetadataAsync(
                     videoUpload,
+                    videoUploadDatas.First().MDFileData,
                     batchId, 
                     thumbnailReference,
-                    videoUploadDatas.First().MDFileData.YoutubeId!, 
                     videoReference,
                     pinVideo).ConfigureAwait(false);
 
@@ -169,12 +167,8 @@ namespace Etherna.DevconArchiveVideoParser.Services
                 Console.WriteLine("Video indexing in progress...");
                 var indexVideoId = await indexerService.IndexManifestAsync(
                     hashMetadataReference,
-                    null)
+                    videoUpload.MDFileData)
                     .ConfigureAwait(false);
-
-                // Embed links.
-                videoUpload.MDFileData.SetEthernaPermanent(hashMetadataReference);
-                videoUpload.MDFileData.SetEthernaIndex(indexVideoId);
 
                 // Remove downloaded files.
                 if (File.Exists(videoUpload.DownloadedFilePath))
@@ -188,6 +182,7 @@ namespace Etherna.DevconArchiveVideoParser.Services
 
         public async Task<string> UploadMetadataAsync(
             MetadataVideo metadataVideo,
+            MDFileData mdFileData,
             bool swarmPin)
         {
             var tmpMetadata = Path.GetTempFileName();
@@ -202,10 +197,14 @@ namespace Etherna.DevconArchiveVideoParser.Services
                     MimeTypes.GetMimeType("application/json"));
 
                 using var fileStream = File.OpenRead(tmpMetadata);
-                return await beeNodeClient.GatewayClient!.UploadFileAsync(
+                var hashMetadataReference = await beeNodeClient.GatewayClient!.UploadFileAsync(
                     metadataVideo.BatchId!,
                     files: new List<FileParameterInput> { fileParameterInput },
                     swarmPin: swarmPin).ConfigureAwait(false);
+
+                mdFileData.SetEthernaPermanent(hashMetadataReference);
+
+                return hashMetadataReference;
             }
             finally
             {
@@ -270,9 +269,9 @@ namespace Etherna.DevconArchiveVideoParser.Services
 
         private async Task<string> UploadMetadataAsync(
             VideoUploadData videoUploadData,
+            MDFileData mdFileData,
             string batchId,
             string thumbnailReference,
-            string youtubeVideoId,
             string videoReference,
             bool swarmPin)
         {
@@ -284,7 +283,7 @@ namespace Etherna.DevconArchiveVideoParser.Services
                 throw new InvalidOperationException("Description not defined");
             if (string.IsNullOrWhiteSpace(videoUploadData.Quality))
                 throw new InvalidOperationException("Quality not defined");
-
+            
             SwarmImageRaw? swarmImageRaw = null;
             if (!string.IsNullOrWhiteSpace(thumbnailReference) &&
                 !string.IsNullOrWhiteSpace(videoUploadData.DownloadedThumbnailPath))
@@ -312,9 +311,9 @@ namespace Etherna.DevconArchiveVideoParser.Services
                 videoUploadData.MDFileData.Title,
                 null,
                 "1.1",
-                new MetadataExtraInfo { Mode = "importer", VideoId = youtubeVideoId });
+                new MetadataExtraInfo { Mode = "importer", VideoId = mdFileData.YoutubeId! });
 
-            return await UploadMetadataAsync(metadataVideo, swarmPin).ConfigureAwait(false);
+            return await UploadMetadataAsync(metadataVideo, mdFileData, swarmPin).ConfigureAwait(false);
         }
 
     }
