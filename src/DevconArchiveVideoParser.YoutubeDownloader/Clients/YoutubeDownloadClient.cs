@@ -21,12 +21,14 @@ namespace Etherna.DevconArchiveVideoParser.YoutubeDownloader.Clients
 
         // Public Methods.
         public async Task<List<VideoUploadData>> DownloadAllResolutionVideoAsync(
-            string url,
+            MDFileData mdFileData,
             int? maxFilesize)
         {
-            if (string.IsNullOrWhiteSpace(url))
-                throw new ArgumentNullException(url);
-            var videos = await GetAllVideosAsync(url).ConfigureAwait(false);
+            if (mdFileData is null)
+                throw new ArgumentNullException(nameof(mdFileData));
+            if (string.IsNullOrWhiteSpace(mdFileData.YoutubeUrl))
+                throw new InvalidOperationException("Invalid youtube url");
+            var videos = await GetAllVideosAsync(mdFileData.YoutubeUrl).ConfigureAwait(false);
 
             // Take best resolution with audio.
             var videoWithAudio = videos
@@ -53,8 +55,9 @@ namespace Etherna.DevconArchiveVideoParser.YoutubeDownloader.Clients
                     videoDownload.AudioBitrate,
                     $"{videoDownload.Resolution}_{videoDownload.FullName}",
                     videoDownload.Resolution,
-                    GetVideoIdFromUrl(url),
-                    videoDownload.Uri));
+                    mdFileData.YoutubeId,
+                    videoDownload.Uri,
+                    mdFileData));
             }
 
             return sourceVideoInfos;
@@ -144,18 +147,6 @@ namespace Etherna.DevconArchiveVideoParser.YoutubeDownloader.Clients
                 }
                 catch { }
             throw new InvalidOperationException($"Can't get the file size");
-        }
-
-        private string? GetVideoIdFromUrl(string url)
-        {
-            var uri = new Uri(url);
-            var query = HttpUtility.ParseQueryString(uri.Query);
-
-            if (query != null &&
-                query.AllKeys.Contains("v"))
-                return query["v"];
-
-            return uri.Segments.Last();
         }
     }
 }

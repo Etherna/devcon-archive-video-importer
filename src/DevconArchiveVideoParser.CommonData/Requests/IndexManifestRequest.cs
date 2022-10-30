@@ -1,4 +1,4 @@
-﻿namespace Etherna.DevconArchiveVideoParser.Models
+﻿namespace Etherna.DevconArchiveVideoParser.CommonData.Requests
 {
     public class IndexManifestRequest
     {

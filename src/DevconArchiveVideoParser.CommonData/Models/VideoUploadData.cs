@@ -8,13 +8,15 @@
             string filename,
             int resolution,
             string? videoId,
-            string uri)
+            string uri,
+            MDFileData mdFileData)
         {
             AudioBitrate = audioBitrate;
             Filename = filename;
             Resolution = resolution;
             VideoId = videoId;
             Uri = uri;
+            MDFileData = mdFileData;
         }
 
         // Properties.
@@ -38,6 +40,6 @@
         public string? VideoId { get; set; }
         public string? VideoReference { get; set; }
         public string Uri { get; set; }
-        public VideoMDData VideoMDData { get; set; } = default!;
+        public MDFileData MDFileData { get; set; }
     }
 }

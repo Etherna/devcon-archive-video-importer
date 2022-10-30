@@ -6,17 +6,17 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 
-namespace DevconArchiveVideoParser.Parsers
+namespace Etherna.DevconArchiveVideoParser.Services
 {
-    internal class MdParser
+    internal class MdVideoParserService
     {
-        public static readonly string[] _keywordForArrayString = { "KEYWORDS", "TAGS", "SPEAKERS" };
-        public static readonly string[] _keywordSkips = { "IMAGE", "IMAGEURL" };
-        public static readonly string[] _keywordNames = { "IMAGE", "IMAGEURL", "EDITION", "TITLE", "DESCRIPTION", "YOUTUBEURL", "IPFSHASH", "DURATION", "EXPERTISE", "TYPE", "TRACK", "KEYWORDS", "TAGS", "SPEAKERS" };
+        public static readonly string[] _keywordForArrayString = Array.Empty<string>();
+        public static readonly string[] _keywordSkips = { "IMAGE", "IMAGEURL", "IPFSHASH", "EXPERTISE", "TRACK", "KEYWORDS", "TAGS", "SPEAKERS", "SOURCEID" };
+        public static readonly string[] _keywordNames = { "IMAGE", "IMAGEURL", "EDITION", "TITLE", "DESCRIPTION", "YOUTUBEURL", "IPFSHASH", "DURATION", "EXPERTISE", "TYPE", "TRACK", "KEYWORDS", "TAGS", "SPEAKERS", "ETHERNAINDEX", "ETHERNAPERMALINK", "SOURCEID" };
 
-        public static IEnumerable<VideoMDData> ToVideoDataDtos(string folderRootPath)
+        public static IEnumerable<MDFileData> ToVideoDataDtos(string folderRootPath)
         {
-            var videoDataInfoDtos = new List<VideoMDData>();
+            var videoDataInfoDtos = new List<MDFileData>();
             var files = Directory.GetFiles(folderRootPath, "*.md", SearchOption.AllDirectories);
 
             Console.WriteLine($"Total files: {files.Length}");
@@ -45,14 +45,15 @@ namespace DevconArchiveVideoParser.Parsers
                         {
                             itemConvertedToJson.AppendLine("}");
 
-                            VideoMDData? videoDataInfoDto = null;
+                            MDFileData? videoDataInfoDto = null;
                             try
                             {
-                                videoDataInfoDto = JsonSerializer.Deserialize<VideoMDData>(
+                                videoDataInfoDto = JsonSerializer.Deserialize<MDFileData>(
                                     itemConvertedToJson.ToString(),
                                     new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
                                 videoDataInfoDto!.Id = sourceFile!.Replace(folderRootPath, "", StringComparison.InvariantCultureIgnoreCase);
                                 videoDataInfoDto!.MdFilepath = sourceFile;
+
                             }
 #pragma warning disable CA1031 // Ignore exception
                             catch (Exception ex)
@@ -79,7 +80,7 @@ namespace DevconArchiveVideoParser.Parsers
                 }
             }
 
-            return videoDataInfoDtos;
+            return videoDataInfoDtos.OrderByDescending(item => item.Edition);
         }
 
         private static string FormatLineForJson(string line, bool havePreviusRow, List<string> descriptionExtraRows)
@@ -90,10 +91,9 @@ namespace DevconArchiveVideoParser.Parsers
             // Fix error declaration of speakers.
             line = line.Replace("\"G. Nicholas D'Andrea\"", "'G. Nicholas D\"Andrea'", StringComparison.InvariantCultureIgnoreCase);
             if (line.Contains("", StringComparison.InvariantCultureIgnoreCase))
-
-
                 if (_keywordForArrayString.Any(keyArrayString =>
-                        line.StartsWith(keyArrayString, StringComparison.InvariantCultureIgnoreCase)))
+                        line.StartsWith(keyArrayString, StringComparison.InvariantCultureIgnoreCase) &&
+                        line.Contains("['", StringComparison.InvariantCultureIgnoreCase)))
                 {
                     //array of string change from ' to "
                     //use TEMPSINGLEQUOTE for mange the case like        'Piotrek "Viggith" Janiuk'

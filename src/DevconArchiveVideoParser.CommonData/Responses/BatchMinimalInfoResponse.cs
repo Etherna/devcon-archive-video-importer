@@ -1,6 +1,6 @@
-﻿namespace Etherna.DevconArchiveVideoParser.Models
+﻿namespace Etherna.DevconArchiveVideoParser.CommonData.Responses
 {
-    public class BatchMinimalInfoDto
+    public class BatchMinimalInfoResponse
     {
         public string? Id { get; set; }
         public bool Exists { get; set; }

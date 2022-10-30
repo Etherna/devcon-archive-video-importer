@@ -1,20 +1,19 @@
-﻿using System;
-using System.Linq;
-using System.Net.Http;
-using System.Threading.Tasks;
-using DevconArchiveVideoParser.Parsers;
+﻿using Etherna.BeeNet;
 using Etherna.BeeNet.Clients.DebugApi;
-using Etherna.BeeNet;
+using Etherna.BeeNet.Clients.GatewayApi;
+using Etherna.DevconArchiveVideoParser.CommonData.Models;
+using Etherna.DevconArchiveVideoParser.CommonData.Responses;
 using Etherna.DevconArchiveVideoParser.Services;
 using Etherna.DevconArchiveVideoParser.SSO;
-using IdentityModel.OidcClient;
 using Etherna.DevconArchiveVideoParser.YoutubeDownloader.Clients;
-using Etherna.BeeNet.Clients.GatewayApi;
-using System.Text.Json;
-using System.Formats.Asn1;
-using System.Globalization;
+using IdentityModel.OidcClient;
+using System;
 using System.IO;
-using Etherna.DevconArchiveVideoParser.Models;
+using System.Linq;
+using System.Net.Http;
+using System.Text.Json;
+using System.Threading.Tasks;
+using static System.Net.WebRequestMethods;
 
 namespace DevconArchiveVideoParser
 {
@@ -24,7 +23,8 @@ namespace DevconArchiveVideoParser
         private const string HelpText =
             "DevconArchiveVideoParser help:\n\n" +
             "-s\tSource folder path with *.md files to import\n" +
-            "-o\tOutput csv file path\n" + "-m\tMax file video size (Mb)\n" +
+            "-o\tOutput csv file path\n" +
+            "-m\tMax file video size (Mb)\n" +
             "-f\tFree video offer by creator\n" +
             "-p\tPin video\n" +
             "\n" +
@@ -34,11 +34,6 @@ namespace DevconArchiveVideoParser
         private const string BEENODE_URL = "https://gateway.etherna.io/";
         private const string ETHERNA_INDEX = "https://index.etherna.io/";
         private const string ETHERNA_GATEWAY = "https://gateway.etherna.io/";
-        private const string ETHERNA_INDEX_PARAMS_INFO = "api/v0.3/System/parameters";
-        static readonly JsonSerializerOptions options = new()
-        {
-            PropertyNameCaseInsensitive = true
-        };
 
         static async Task Main(string[] args)
         {
@@ -79,7 +74,7 @@ namespace DevconArchiveVideoParser
             var tmpFolderFullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, tmpFolder);
 
             // Read from files md.
-            var videoMds = MdParser.ToVideoDataDtos(sourceFolderPath);
+            var mdFiles = MdVideoParserService.ToVideoDataDtos(sourceFolderPath);
 
             // Sign with SSO and create auth client.
             var authResult = await SigInSSO().ConfigureAwait(false);
@@ -98,6 +93,7 @@ namespace DevconArchiveVideoParser
             var httpClient = new HttpClient(authResult.RefreshTokenHandler) { Timeout = TimeSpan.FromHours(2) };
 
             // Inizialize services.
+            var indexerServices = new IndexerService(httpClient, ETHERNA_INDEX);
             var videoImporterService = new VideoImporterService(
                 new YoutubeDownloadClient(),
                 tmpFolderFullPath,
@@ -112,59 +108,92 @@ namespace DevconArchiveVideoParser
             var videoUploaderService = new VideoUploaderService(
                 httpClient,
                 beeNodeClient,
+                indexerServices,
                 ETHERNA_GATEWAY,
-                ETHERNA_INDEX,
                 userEthAddr,
                 offerVideo);
 
             // Call import service for each video.
-            var indexParams = await GetParamsInfoAsync(httpClient).ConfigureAwait(false);
+            var indexParams = await indexerServices.GetParamsInfoAsync().ConfigureAwait(false);
             var videoCount = 0;
-            var totalVideo = videoMds.Count();
-            foreach (var videoMd in videoMds)
+            var totalVideo = mdFiles.Count();
+            foreach (var mdFile in mdFiles)
             {
                 try
                 {
                     Console.WriteLine("===============================");
                     Console.WriteLine($"Start processing video #{++videoCount} of #{totalVideo}");
-                    Console.WriteLine($"Title: {videoMd.Title}");
+                    Console.WriteLine($"Title: {mdFile.Title}");
 
-                    if (!string.IsNullOrWhiteSpace(videoMd.EthernaUrl))
+                    // Check last valid manifest, if exist.
+                    var manifest = await indexerServices.GetLastValidManifestAsync(mdFile.IndexVideoId).ConfigureAwait(false);
+                    if (manifest is not null)
                     {
-                        //TODO check if somethings changed.
-                        Console.WriteLine($"Video already on etherna");
-                        continue;
+                        // Check if manifest contain the same url of current md file.
+                        var extraInfo = manifest.ExtraInfoTyped<MetadataExtraInfo>();
+                        if (extraInfo is not null &&
+                            extraInfo.VideoId == mdFile.YoutubeId)
+                        {
+                            // When YoutubeId is already uploaded, check for any change in metadata.
+                            if (!manifest.CheckForMetadataInfoChanged(mdFile))
+                            {
+                                // No change in any fields.
+                                Console.WriteLine($"Video already on etherna");
+                                continue;
+                            }
+                            else
+                                manifest.UpdateMetadataInfo(mdFile);
+                        }
+                        else
+                        {
+                            // Youtube video changed.
+                            // TODO remove all old Indexed data.
+                            manifest = null; // Set null for restart all process like a first time.
+                        }
                     }
 
-                    if (videoMd.Title!.Length > indexParams.VideoTitleMaxLength)
+                    // Data validation.
+                    if (mdFile.Title!.Length > indexParams.VideoTitleMaxLength)
                     {
                         Console.ForegroundColor = ConsoleColor.DarkRed;
                         Console.WriteLine($"Error: Title too long, max: {indexParams.VideoTitleMaxLength}\n");
                         Console.ResetColor();
                         continue;
                     }
-                    if (videoMd.Description!.Length > indexParams.VideoDescriptionMaxLength)
+                    if (mdFile.Description!.Length > indexParams.VideoDescriptionMaxLength)
                     {
                         Console.ForegroundColor = ConsoleColor.DarkRed;
                         Console.WriteLine($"Error: Description too long, max: {indexParams.VideoDescriptionMaxLength}\n");
                         Console.ResetColor();
                         continue;
                     }
-                    Console.WriteLine($"Source Video: {videoMd.YoutubeUrl}");
+                    Console.WriteLine($"Source Video: {mdFile.YoutubeUrl}");
 
-                    // Download from youtube.
-                    var videoUploadInfos = await videoImporterService.StartAsync(videoMd).ConfigureAwait(false);
 
-                    if (videoMd.Duration <= 0)
+                    if (manifest is null)
                     {
-                        Console.ForegroundColor = ConsoleColor.DarkRed;
-                        Console.WriteLine($"Error: Duration missing\n");
-                        Console.ResetColor();
-                        continue;
+                        // Download from youtube.
+                        var videoUploadInfos = await videoImporterService.StartAsync(mdFile).ConfigureAwait(false);
+
+                        if (mdFile.Duration <= 0)
+                        {
+                            Console.ForegroundColor = ConsoleColor.DarkRed;
+                            Console.WriteLine($"Error: Duration missing\n");
+                            Console.ResetColor();
+                            continue;
+                        }
+
+                        // Upload on bee node.
+                        await videoUploaderService.StartUploadAsync(videoUploadInfos, pinVideo).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        // Change metadata info.
+                        //TODO create method for update metadata.
+                        await videoUploaderService.UploadMetadataAsync(manifest, pinVideo).ConfigureAwait(false);
+                        //await indexerServices.IndexManifestAsync(manifest);
                     }
 
-                    // Upload on bee node.
-                    await videoUploaderService.StartAsync(videoUploadInfos, pinVideo).ConfigureAwait(false);
 
                     Console.ForegroundColor = ConsoleColor.DarkGreen;
                     Console.WriteLine($"#{videoCount} Video imported successfully");
@@ -180,16 +209,6 @@ namespace DevconArchiveVideoParser
         }
 
         // Private helpers.
-        private static async Task<IndexParamsDto> GetParamsInfoAsync(HttpClient httpClient)
-        {
-            var httpResponse = await httpClient.GetAsync(new Uri($"{ETHERNA_INDEX}{ETHERNA_INDEX_PARAMS_INFO}")).ConfigureAwait(false);
-
-            httpResponse.EnsureSuccessStatusCode();
-
-            var responseText = await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
-            return JsonSerializer.Deserialize<IndexParamsDto>(responseText, options)!;
-        }
-
         private static string ReadStringIfEmpty(string? strValue)
         {
             if (string.IsNullOrWhiteSpace(strValue))

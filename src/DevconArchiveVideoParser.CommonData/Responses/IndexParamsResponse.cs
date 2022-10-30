@@ -1,6 +1,6 @@
-﻿namespace Etherna.DevconArchiveVideoParser.Models
+﻿namespace Etherna.DevconArchiveVideoParser.CommonData.Responses
 {
-    internal class IndexParamsDto
+    public class IndexParamsResponse
     {
         public int CommentMaxLength { get; set; }
         public int VideoDescriptionMaxLength { get; set; }

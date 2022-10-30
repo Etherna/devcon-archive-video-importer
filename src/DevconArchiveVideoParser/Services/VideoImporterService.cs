@@ -28,7 +28,7 @@ namespace Etherna.DevconArchiveVideoParser.Services
         }
 
         // Public methods.
-        public async Task<List<VideoUploadData>> StartAsync(VideoMDData videoMd)
+        public async Task<List<VideoUploadData>> StartAsync(MDFileData videoMd)
         {
             if (string.IsNullOrWhiteSpace(videoMd.YoutubeUrl))
                 throw new InvalidOperationException("Invalid YoutubeUrl");
@@ -36,7 +36,7 @@ namespace Etherna.DevconArchiveVideoParser.Services
             try
             {
                 // Take best video resolution.
-                var videoInfos = await downloadClient.DownloadAllResolutionVideoAsync(videoMd.YoutubeUrl, maxFilesize).ConfigureAwait(false);
+                var videoInfos = await downloadClient.DownloadAllResolutionVideoAsync(videoMd, maxFilesize).ConfigureAwait(false);
                 if (videoInfos is null ||
                     videoInfos.Count == 0)
                     throw new InvalidOperationException($"Not found video");
@@ -85,7 +85,7 @@ namespace Etherna.DevconArchiveVideoParser.Services
                 videoInfos.ForEach(video =>
                 {
                     video.DownloadedThumbnailPath = downloadedThumbnailPath;
-                    video.VideoMDData = videoMd;
+                    video.MDFileData = videoMd;
                 });
 
                 return videoInfos;
