@@ -81,7 +81,7 @@ namespace Etherna.DevconArchiveVideoParser.Services
                 }
 
                 // Download Thumbnail.
-                var downloadedThumbnailPath = await downloadClient.DownloadThumbnailAsync(videoInfos.First().VideoId, tmpFolder).ConfigureAwait(false);
+                var downloadedThumbnailPath = await downloadClient.DownloadThumbnailAsync(videoInfos.First().MDFileData.YoutubeId, tmpFolder).ConfigureAwait(false);
                 videoInfos.ForEach(video =>
                 {
                     video.DownloadedThumbnailPath = downloadedThumbnailPath;

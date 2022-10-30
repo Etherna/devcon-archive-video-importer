@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
@@ -31,8 +32,6 @@ namespace Etherna.DevconArchiveVideoParser.Services
         private const int BATCH_WAITING_TIME = 7 * 1000;
         private const int BATCH_TIMEOUT_TIME = 5 * 60 * 1000;
         private const int BLOCK_TIME = 5;
-        private const string EMBED_LINK_DECENTRALIZED_RESOURCE = "https://etherna.io/embed/{0}";
-        private const string EMBED_LINK_INDEX_RESOURCE = "https://etherna.io/embed/{0}";
         private const string GATEWAY_API_CREATEBATCH = "api/v0.3/users/current/batches";
         private const string GATEWAY_API_CHAINSTATE = "api/v0.3/system/chainstate";
         private const string GATEWAY_API_GETBATCH = "api/v0.3/users/current/batches";
@@ -64,7 +63,7 @@ namespace Etherna.DevconArchiveVideoParser.Services
         }
 
         // Public methods.
-        public async Task StartUploadAsync(
+        public async Task<MDFileData> StartUploadAsync(
             List<VideoUploadData> videoUploadDatas,
             bool pinVideo)
         {
@@ -74,26 +73,27 @@ namespace Etherna.DevconArchiveVideoParser.Services
                 // Create new batch.
                 Console.WriteLine("Create batch...");
                 // Create batch.
-                videoUpload.BatchReferenceId = await CreateBatchIdFromReferenceAsync().ConfigureAwait(false);
+                var batchReferenceId = await CreateBatchIdFromReferenceAsync().ConfigureAwait(false);
 
                 // Check and wait until created batchId is avaiable.
                 Console.WriteLine("Waiting for batch ready...");
                 int timeWaited = 0;
+                string batchId = "";
                 do
                 {
                     // Timeout throw exception.
                     if (timeWaited >= BATCH_TIMEOUT_TIME)
                     {
                         var ex = new InvalidOperationException("Batch not avaiable");
-                        ex.Data.Add("BatchReferenceId", videoUpload.BatchReferenceId);
+                        ex.Data.Add("BatchReferenceId", batchReferenceId);
                         throw ex;
                     }
 
                     // Waiting for batchId avaiable.
                     await Task.Delay(BATCH_WAITING_TIME).ConfigureAwait(false);
-                    videoUpload.BatchId = await GetBatchIdFromReference(videoUpload.BatchReferenceId!).ConfigureAwait(false);
+                    batchId = await GetBatchIdFromReference(batchReferenceId).ConfigureAwait(false);
                     timeWaited += BATCH_WAITING_TIME;
-                } while (string.IsNullOrWhiteSpace(videoUpload.BatchId));
+                } while (string.IsNullOrWhiteSpace(batchId));
 
                 // Check and wait until created batch is usable.
                 timeWaited = 0;
@@ -104,13 +104,13 @@ namespace Etherna.DevconArchiveVideoParser.Services
                     if (timeWaited >= BATCH_TIMEOUT_TIME)
                     {
                         var ex = new InvalidOperationException("Batch not usable");
-                        ex.Data.Add("BatchId", videoUpload.BatchId);
+                        ex.Data.Add("BatchId", batchId);
                         throw ex;
                     }
 
                     // Waiting for batch ready.
                     await Task.Delay(BATCH_WAITING_TIME).ConfigureAwait(false);
-                    batchUsable = await GetBatchUsableAsync(videoUpload.BatchId).ConfigureAwait(false);
+                    batchUsable = await GetBatchUsableAsync(batchId).ConfigureAwait(false);
                     timeWaited += BATCH_WAITING_TIME;
                 } while (!batchUsable);
 
@@ -121,11 +121,12 @@ namespace Etherna.DevconArchiveVideoParser.Services
                     Path.GetFileName(videoUpload.DownloadedFilePath!),
                     MimeTypes.GetMimeType(Path.GetFileName(videoUpload.DownloadedFilePath!)));
 
-                videoUpload.VideoReference = await beeNodeClient.GatewayClient!.UploadFileAsync(
-                    videoUpload.BatchId!,
+                var videoReference = await beeNodeClient.GatewayClient!.UploadFileAsync(
+                    batchId,
                     files: new List<FileParameterInput> { fileParameterInput },
                     swarmPin: pinVideo).ConfigureAwait(false);
 
+                var thumbnailReference = "";
                 if (!thumbnailUploaded)
                 {
                     // Upload thumbnail only one time.
@@ -135,8 +136,8 @@ namespace Etherna.DevconArchiveVideoParser.Services
                         Path.GetFileName(videoUpload.DownloadedThumbnailPath!),
                         MimeTypes.GetMimeType(Path.GetFileName(videoUpload.DownloadedThumbnailPath!)));
 
-                    videoUpload.ThumbnailReference = await beeNodeClient.GatewayClient!.UploadFileAsync(
-                        videoUpload.BatchId!,
+                    thumbnailReference = await beeNodeClient.GatewayClient!.UploadFileAsync(
+                        batchId,
                         files: new List<FileParameterInput> { fileThumbnailParameterInput },
                         swarmPin: pinVideo).ConfigureAwait(false);
 
@@ -145,30 +146,35 @@ namespace Etherna.DevconArchiveVideoParser.Services
 
                 // Upload metadata.
 
+                // Upload metadata.
+                var hashMetadataReference = await UploadMetadataAsync(
+                    videoUpload,
+                    batchId, 
+                    thumbnailReference,
+                    videoUploadDatas.First().MDFileData.YoutubeId!, 
+                    videoReference,
+                    pinVideo).ConfigureAwait(false);
+
                 if (offerVideo)
                 {
+                    // Offer all uploaded content.
                     Console.WriteLine("Flag video by offer from creator in progress...");
-                    await OfferResourceAsync(videoUpload.VideoReference).ConfigureAwait(false);
-                    if (!string.IsNullOrWhiteSpace(videoUpload.ThumbnailReference))
-                        await OfferResourceAsync(videoUpload.ThumbnailReference).ConfigureAwait(false);
-                    await OfferResourceAsync(videoUpload.HashMetadataReference!).ConfigureAwait(false);
+                    await OfferResourceAsync(videoReference).ConfigureAwait(false);
+                    if (!string.IsNullOrWhiteSpace(thumbnailReference) && !thumbnailUploaded)
+                        await OfferResourceAsync(thumbnailReference).ConfigureAwait(false);
+                    await OfferResourceAsync(hashMetadataReference).ConfigureAwait(false);
                 }
-
-                // Upload metadata.
-                videoUpload.HashMetadataReference = await UploadMetadataAsync(
-                    videoUpload,
-                    pinVideo).ConfigureAwait(false);
 
                 // Sync Index.
                 Console.WriteLine("Video indexing in progress...");
-                videoUpload.IndexVideoId = await indexerService.IndexManifestAsync(
-                    videoUpload.HashMetadataReference,
-                    videoUpload.IndexVideoId)
+                var indexVideoId = await indexerService.IndexManifestAsync(
+                    hashMetadataReference,
+                    null)
                     .ConfigureAwait(false);
 
                 // Embed links.
-                videoUpload.EmbedDecentralizedLink = string.Format(CultureInfo.InvariantCulture, EMBED_LINK_DECENTRALIZED_RESOURCE, videoUpload.HashMetadataReference);
-                videoUpload.EmbedIndexLink = string.Format(CultureInfo.InvariantCulture, EMBED_LINK_INDEX_RESOURCE, videoUpload.IndexVideoId);
+                videoUpload.MDFileData.SetEthernaPermanent(hashMetadataReference);
+                videoUpload.MDFileData.SetEthernaIndex(indexVideoId);
 
                 // Remove downloaded files.
                 if (File.Exists(videoUpload.DownloadedFilePath))
@@ -176,7 +182,8 @@ namespace Etherna.DevconArchiveVideoParser.Services
                 if (File.Exists(videoUpload.DownloadedThumbnailPath))
                     File.Delete(videoUpload.DownloadedThumbnailPath);
             }
-            return;
+
+            return videoUploadDatas.First().MDFileData;
         }
 
         public async Task<string> UploadMetadataAsync(
@@ -263,6 +270,10 @@ namespace Etherna.DevconArchiveVideoParser.Services
 
         private async Task<string> UploadMetadataAsync(
             VideoUploadData videoUploadData,
+            string batchId,
+            string thumbnailReference,
+            string youtubeVideoId,
+            string videoReference,
             bool swarmPin)
         {
             if (videoUploadData is null)
@@ -275,7 +286,7 @@ namespace Etherna.DevconArchiveVideoParser.Services
                 throw new InvalidOperationException("Quality not defined");
 
             SwarmImageRaw? swarmImageRaw = null;
-            if (!string.IsNullOrWhiteSpace(videoUploadData.ThumbnailReference) &&
+            if (!string.IsNullOrWhiteSpace(thumbnailReference) &&
                 !string.IsNullOrWhiteSpace(videoUploadData.DownloadedThumbnailPath))
             {
                 using var input = File.OpenRead(videoUploadData.DownloadedThumbnailPath);
@@ -285,23 +296,23 @@ namespace Etherna.DevconArchiveVideoParser.Services
                 swarmImageRaw = new SwarmImageRaw(
                     sourceImage.Width / sourceImage.Height,
                     hash,
-                    new Dictionary<string, string> { { $"{sourceImage.Width}w", videoUploadData.ThumbnailReference } },
+                    new Dictionary<string, string> { { $"{sourceImage.Width}w", thumbnailReference } },
                     "1.0");
             }
 
             var metadataVideo = new MetadataVideo(
-                videoUploadData.BatchId!,
+                batchId,
                 videoUploadData.MDFileData.Description,
                 videoUploadData.Duration,
                 DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 videoUploadData.Quality,
                 userEthAddr,
-                new List<MetadataVideoSource> { new MetadataVideoSource(videoUploadData.Bitrate, videoUploadData.Quality, videoUploadData.VideoReference!, videoUploadData.Size) },
+                new List<MetadataVideoSource> { new MetadataVideoSource(videoUploadData.Bitrate, videoUploadData.Quality, videoReference, videoUploadData.Size) },
                 swarmImageRaw,
                 videoUploadData.MDFileData.Title,
                 null,
                 "1.1",
-                new MetadataExtraInfo { Mode = "importer", VideoId = videoUploadData.VideoId! });
+                new MetadataExtraInfo { Mode = "importer", VideoId = youtubeVideoId });
 
             return await UploadMetadataAsync(metadataVideo, swarmPin).ConfigureAwait(false);
         }

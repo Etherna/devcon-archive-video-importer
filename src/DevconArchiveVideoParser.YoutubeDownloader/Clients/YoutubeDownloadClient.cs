@@ -55,7 +55,6 @@ namespace Etherna.DevconArchiveVideoParser.YoutubeDownloader.Clients
                     videoDownload.AudioBitrate,
                     $"{videoDownload.Resolution}_{videoDownload.FullName}",
                     videoDownload.Resolution,
-                    mdFileData.YoutubeId,
                     videoDownload.Uri,
                     mdFileData));
             }

@@ -190,8 +190,8 @@ namespace DevconArchiveVideoParser
                     {
                         // Change metadata info.
                         //TODO create method for update metadata.
-                        await videoUploaderService.UploadMetadataAsync(manifest, pinVideo).ConfigureAwait(false);
-                        //await indexerServices.IndexManifestAsync(manifest);
+                        var hashReferenceMetadata = await videoUploaderService.UploadMetadataAsync(manifest, pinVideo).ConfigureAwait(false);
+                        var indexVideoId = await indexerServices.IndexManifestAsync(hashReferenceMetadata, mdFile.IndexVideoId).ConfigureAwait(false);
                     }
 
 

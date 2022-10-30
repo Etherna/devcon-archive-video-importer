@@ -45,5 +45,18 @@ namespace Etherna.DevconArchiveVideoParser.CommonData.Models
                 return EthernaIndex?.Replace(PREFIX_ETHERNA_PERMALINK, "", StringComparison.InvariantCultureIgnoreCase);
             }
         }
+
+        // Methods.
+        public string SetEthernaPermanent(string hashMetadataReference)
+        {
+            EthernaPermalink = $"{PREFIX_ETHERNA_PERMALINK}{hashMetadataReference}";
+            return EthernaPermalink;
+        }
+
+        public string SetEthernaIndex(string indexVideoId)
+        {
+            EthernaIndex = $"{PREFIX_ETHERNA_INDEX}{indexVideoId}";
+            return EthernaIndex;
+        }
     }
 }
