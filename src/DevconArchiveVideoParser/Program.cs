@@ -36,40 +36,6 @@ namespace DevconArchiveVideoParser
 
         static async Task Main(string[] args)
         {
-            var jsonText = @"{
-  ""id"": ""63485e84c02259b06a2ffc7e"",
-  ""creationDateTime"": ""2022-10-13T18:52:52.514Z"",
-  ""currentVoteValue"": null,
-  ""lastValidManifest"": {
-    ""batchId"": ""71d2330ccb7f517c5b6a272eafeea8896bfd5339e78fee7bf7b2357953079664"",
-    ""description"": ""Lefteris Karapetsas presents on C++ Ethereum and Emacs."",
-    ""duration"": 814,
-    ""hash"": ""682d062554f31ce795e6e711463f50a81a5ee1ab28cc48ef8ad1f9b7fd944bbc"",
-    ""originalQuality"": ""720p"",
-    ""sources"": [
-      {
-        ""bitrate"": 878085,
-        ""quality"": ""720p"",
-        ""reference"": ""b3c436ad4612d2c76be2ecddae7d76f64ad210ae44cd490dfcd6081f88ac42b2"",
-        ""size"": 89345137
-      }
-    ],
-    ""thumbnail"": {
-      ""aspectRatio"": 1,
-      ""blurhash"": ""URHL0oRP00?b_3M{D%xu4.xu%MM{D%of%MRP"",
-      ""sources"": {
-        ""1280w"": ""174c155654beda5487d843cc6ebe1bf218ee83fb95212a1d09dbc47c6c5436d9""
-      }
-    },
-    ""title"": ""C++ Ethereum and Emacs""
-  },
-  ""ownerAddress"": ""0x80AA47AC94C29314699CaF85c6A243b1e1ba8d28"",
-  ""totDownvotes"": 0,
-  ""totUpvotes"": 0
-}";
-            var obj = JsonUtility.FromJson<VideoIndexResponse>(jsonText);
-
-
             // Parse arguments.
             string? sourceFolderPath = null;
             string? maxFilesizeStr = null;
@@ -126,7 +92,7 @@ namespace DevconArchiveVideoParser
             var httpClient = new HttpClient(authResult.RefreshTokenHandler) { Timeout = TimeSpan.FromHours(2) };
 
             // Inizialize services.
-            var indexerServices = new IndexerService(httpClient, ETHERNA_INDEX);
+            var indexerService = new IndexerService(httpClient, ETHERNA_INDEX);
             var videoDownloaderService = new VideoDownloaderService(
                 new YoutubeDownloadClient(),
                 tmpFolderFullPath,
@@ -141,13 +107,13 @@ namespace DevconArchiveVideoParser
             var videoUploaderService = new VideoUploaderService(
                 httpClient,
                 beeNodeClient,
-                indexerServices,
+                indexerService,
                 ETHERNA_GATEWAY,
                 userEthAddr,
                 offerVideo);
 
             // Import each video.
-            var indexParams = await indexerServices.GetParamsInfoAsync().ConfigureAwait(false);
+            var indexParams = await indexerService.GetParamsInfoAsync().ConfigureAwait(false);
             var videoCount = 0;
             var totalVideo = mdFiles.Count();
             foreach (var mdFile in mdFiles)
@@ -159,7 +125,7 @@ namespace DevconArchiveVideoParser
                     Console.WriteLine($"Title: {mdFile.Title}");
 
                     // Check last valid manifest, if exist.
-                    var manifest = await indexerServices.GetLastValidManifestAsync(mdFile.IndexVideoId).ConfigureAwait(false);
+                    var manifest = await indexerService.GetLastValidManifestAsync(mdFile.IndexVideoId).ConfigureAwait(false);
                     if (manifest is not null)
                     {
                         // Check if manifest contain the same url of current md file.
@@ -181,6 +147,7 @@ namespace DevconArchiveVideoParser
                         {
                             // Youtube video changed.
                             // TODO remove all old Indexed data.
+                            mdFile.ResetEthernaData(); // Reset all data otherwise instead of creane new index will be update.
                             manifest = null; // Set null for restart all process like a first time.
                         }
                     }
@@ -222,9 +189,11 @@ namespace DevconArchiveVideoParser
                     else
                     {
                         // Change metadata info.
-                        var hashReferenceMetadata = await videoUploaderService.UploadMetadataAsync(manifest, mdFile, pinVideo).ConfigureAwait(false);
-                        var indexVideoId = await indexerServices.IndexManifestAsync(hashReferenceMetadata, mdFile).ConfigureAwait(false);
+                        var hashMetadataReference = await videoUploaderService.UploadMetadataAsync(manifest, mdFile, pinVideo).ConfigureAwait(false);
+                        await indexerService.IndexManifestAsync(hashMetadataReference, mdFile).ConfigureAwait(false);
                     }
+
+                    // TODO save MD file.
 
                     Console.ForegroundColor = ConsoleColor.DarkGreen;
                     Console.WriteLine($"#{videoCount} Video imported successfully");

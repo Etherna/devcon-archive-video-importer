@@ -1,34 +1,28 @@
-﻿namespace Etherna.DevconArchiveVideoParser.CommonData.Models
+﻿using System.Collections.Generic;
+
+namespace Etherna.DevconArchiveVideoParser.CommonData.Models
 {
     public class VideoUploadData
     {
         // Contractor.
         public VideoUploadData(
-            int audioBitrate,
-            string filename,
-            int resolution,
-            string uri,
-            MDFileData mdFileData)
+            string downloadedThumbnailPath,
+            MDFileData mdFileData,
+            string originalQuality,
+            ICollection<VideoUploadDataItem> videoUploadItems)
         {
-            AudioBitrate = audioBitrate;
-            Filename = filename;
-            Resolution = resolution;
-            Uri = uri;
+            DownloadedThumbnailPath = downloadedThumbnailPath;
             MDFileData = mdFileData;
+            OriginalQuality = originalQuality;
+            VideoUploadDataItems = videoUploadItems;
         }
 
         // Properties.
-        public int AudioBitrate { get; set; }
-        public int Bitrate { get; set; }
-        public int Duration { get; set; }
-        public string? DownloadedFileName { get; set; }
-        public string? DownloadedFilePath { get; set; }
-        public string? DownloadedThumbnailPath { get; set; }
-        public string Filename { get; set; }
-        public int Resolution { get; set; }
-        public string? Quality { get; set; }
-        public long Size { get; set; }
-        public string Uri { get; set; }
+        public string DownloadedThumbnailPath { get; set; }
         public MDFileData MDFileData { get; set; }
+        public string OriginalQuality { get; set; }
+#pragma warning disable CA2227 // Collection properties should be read only
+        public ICollection<VideoUploadDataItem> VideoUploadDataItems { get; set; }
+#pragma warning restore CA2227 // Collection properties should be read only
     }
 }

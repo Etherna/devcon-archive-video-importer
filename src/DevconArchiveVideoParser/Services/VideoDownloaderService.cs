@@ -30,21 +30,21 @@ namespace Etherna.DevconArchiveVideoParser.Services
         }
 
         // Public methods.
-        public async Task<List<VideoUploadData>> StartAsync(MDFileData videoMd)
+        public async Task<VideoUploadData> StartAsync(MDFileData videoMd)
         {
-            if (string.IsNullOrWhiteSpace(videoMd.YoutubeUrl))
+            if (string.IsNullOrWhiteSpace(videoMd?.YoutubeUrl))
                 throw new InvalidOperationException("Invalid YoutubeUrl");
 
             try
             {
                 // Take best video resolution.
-                var videoInfos = await downloadClient.DownloadAllResolutionVideoAsync(videoMd, maxFilesize).ConfigureAwait(false);
-                if (videoInfos is null ||
-                    videoInfos.Count == 0)
+                var videoResolutions = await downloadClient.DownloadAllResolutionVideoAsync(videoMd, maxFilesize).ConfigureAwait(false);
+                if (videoResolutions is null ||
+                    videoResolutions.Count == 0)
                     throw new InvalidOperationException($"Not found video");
 
                 // Download each video reoslution.
-                foreach (var videoInfo in videoInfos)
+                foreach (var videoInfo in videoResolutions)
                 {
                     // Start download and show progress.
                     videoInfo.DownloadedFilePath = Path.Combine(tmpFolder, videoInfo.Filename);
@@ -55,14 +55,15 @@ namespace Etherna.DevconArchiveVideoParser.Services
                             !downloaded)
                         try
                         {
+                            i++;
                             await downloadClient.DownloadAsync(
-                        new Uri(videoInfo.Uri),
-                        videoInfo.DownloadedFilePath,
-                        new Progress<Tuple<long, long>>((Tuple<long, long> v) =>
-                        {
-                            var percent = (int)(v.Item1 * 100 / v.Item2);
-                            Console.Write($"Downloading resolution {videoInfo.Resolution}.. ( % {percent} ) {v.Item1 / (1024 * 1024)} / {v.Item2 / (1024 * 1024)} MB\r");
-                        })).ConfigureAwait(false);
+                                new Uri(videoInfo.Uri),
+                                videoInfo.DownloadedFilePath,
+                                new Progress<Tuple<long, long>>((Tuple<long, long> v) =>
+                                {
+                                    var percent = (int)(v.Item1 * 100 / v.Item2);
+                                    Console.Write($"Downloading resolution {videoInfo.Resolution}.. ( % {percent} ) {v.Item1 / (1024 * 1024)} / {v.Item2 / (1024 * 1024)} MB\r");
+                                })).ConfigureAwait(false);
                             downloaded = true;
                         }
                         catch { }
@@ -73,7 +74,6 @@ namespace Etherna.DevconArchiveVideoParser.Services
                     // Set video info from downloaded video.
                     var fileSize = new FileInfo(videoInfo.DownloadedFilePath!).Length;
                     videoInfo.DownloadedFileName = videoInfo.Filename;
-                    videoInfo.Quality = videoInfo.Resolution.ToString(CultureInfo.InvariantCulture) + "p";
                     videoInfo.Size = fileSize;
                     videoInfo.Duration = GetDuration(videoInfo.DownloadedFilePath);
                     if (videoInfo.Duration <= 0)
@@ -84,14 +84,10 @@ namespace Etherna.DevconArchiveVideoParser.Services
                 }
 
                 // Download Thumbnail.
-                var downloadedThumbnailPath = await downloadClient.DownloadThumbnailAsync(videoInfos.First().MDFileData.YoutubeId, tmpFolder).ConfigureAwait(false);
-                videoInfos.ForEach(video =>
-                {
-                    video.DownloadedThumbnailPath = downloadedThumbnailPath;
-                    video.MDFileData = videoMd;
-                });
+                var downloadedThumbnailPath = await downloadClient.DownloadThumbnailAsync(videoMd.YoutubeId!, tmpFolder).ConfigureAwait(false);
+                var originalQuality = videoResolutions.First().Resolution + "p";
 
-                return videoInfos;
+                return new VideoUploadData(downloadedThumbnailPath, videoMd, originalQuality, videoResolutions);
             }
             catch (Exception)
             {

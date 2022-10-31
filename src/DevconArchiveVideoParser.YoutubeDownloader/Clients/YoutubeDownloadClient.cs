@@ -20,7 +20,7 @@ namespace Etherna.DevconArchiveVideoParser.YoutubeDownloader.Clients
         private const int MAX_RETRY = 3;
 
         // Public Methods.
-        public async Task<List<VideoUploadData>> DownloadAllResolutionVideoAsync(
+        public async Task<List<VideoUploadDataItem>> DownloadAllResolutionVideoAsync(
             MDFileData mdFileData,
             int? maxFilesize)
         {
@@ -40,7 +40,7 @@ namespace Etherna.DevconArchiveVideoParser.YoutubeDownloader.Clients
                 .Distinct()
                 .OrderByDescending(res => res);
 
-            var sourceVideoInfos = new List<VideoUploadData>();
+            var sourceVideoInfos = new List<VideoUploadDataItem>();
             foreach (var currentRes in allResolutions)
             {
                 var videoDownload = videoWithAudio
@@ -51,12 +51,11 @@ namespace Etherna.DevconArchiveVideoParser.YoutubeDownloader.Clients
                     fileSize > maxFilesize * 1024 * 1024)
                     continue;
 
-                sourceVideoInfos.Add(new VideoUploadData(
+                sourceVideoInfos.Add(new VideoUploadDataItem(
                     videoDownload.AudioBitrate,
                     $"{videoDownload.Resolution}_{videoDownload.FullName}",
                     videoDownload.Resolution,
-                    videoDownload.Uri,
-                    mdFileData));
+                    videoDownload.Uri));
             }
 
             return sourceVideoInfos;
@@ -106,12 +105,9 @@ namespace Etherna.DevconArchiveVideoParser.YoutubeDownloader.Clients
             }
         }
 
-        public async Task<string?> DownloadThumbnailAsync(string? videoId, string tmpFolder)
+        public async Task<string> DownloadThumbnailAsync(string videoId, string tmpFolder)
         {
-            if (string.IsNullOrWhiteSpace(videoId))
-                return null;
-
-            var filePath = $"{tmpFolder}/{videoId}.jpg";
+            string filePath = $"{tmpFolder}/{videoId}.jpg";
             var url = $"https://img.youtube.com/vi/{videoId}/maxresdefault.jpg";
             var i = 0;
             while (i < MAX_RETRY)

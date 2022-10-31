@@ -55,6 +55,11 @@ namespace Etherna.DevconArchiveVideoParser.CommonData.Models
         }
 
         // Methods.
+        public void ResetEthernaData()
+        {
+            EthernaIndex = null;
+            EthernaPermalink = null;
+        }
 
         public string SetEthernaIndex(string indexVideoId)
         {
@@ -62,7 +67,7 @@ namespace Etherna.DevconArchiveVideoParser.CommonData.Models
             return EthernaIndex;
         }
 
-        public string SetEthernaPermanent(string hashMetadataReference)
+        public string SetEthernaPermalink(string hashMetadataReference)
         {
             EthernaPermalink = $"{PREFIX_ETHERNA_PERMALINK}{hashMetadataReference}";
             return EthernaPermalink;

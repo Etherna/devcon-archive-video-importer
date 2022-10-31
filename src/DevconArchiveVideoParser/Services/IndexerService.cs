@@ -32,6 +32,7 @@ namespace Etherna.DevconArchiveVideoParser.Services
             string hashReferenceMetadata,
             MDFileData mdFileData)
         {
+            //TODO Insert retry for http error.
             if (mdFileData is null)
                 throw new ArgumentNullException(nameof(mdFileData));
 
