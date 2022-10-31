@@ -1,6 +1,7 @@
 ﻿using Etherna.DevconArchiveVideoParser.CommonData.Json;
 using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace Etherna.DevconArchiveVideoParser.CommonData.Models
 {
@@ -34,21 +35,37 @@ namespace Etherna.DevconArchiveVideoParser.CommonData.Models
             UpdatedAt = updatedAt;
             V = v;
         }
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+        public MetadataVideo() { }
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 
         // Properties.
-        public string? BatchId { get; }
-        public long CreatedAt { get; }
-        public string Description { get; private set; }
-        public long Duration { get; }
-        public string ExtraInfo { get; }
-        public string? Hash { get; }
-        public string OriginalQuality { get; }
-        public string OwnerAddress { get; }
-        public IEnumerable<MetadataVideoSource> Sources { get; }
-        public SwarmImageRaw? Thumbnail { get; }
-        public string Title { get; private set; }
-        public long? UpdatedAt { get; }
-        public string V { get; }
+        [JsonInclude]
+        public string? BatchId { get; protected set; }
+        [JsonInclude]
+        public long CreatedAt { get; protected set; }
+        [JsonInclude]
+        public string Description { get; protected set; }
+        [JsonInclude]
+        public long Duration { get; protected set; }
+        [JsonInclude]
+        public string ExtraInfo { get; protected set; }
+        [JsonInclude]
+        public string? Hash { get; protected set; }
+        [JsonInclude]
+        public string OriginalQuality { get; protected set; }
+        [JsonInclude]
+        public string OwnerAddress { get; protected set; }
+        [JsonInclude]
+        public IEnumerable<MetadataVideoSource> Sources { get; protected set; }
+        [JsonInclude]
+        public SwarmImageRaw? Thumbnail { get; protected set; }
+        [JsonInclude]
+        public string Title { get; protected set; }
+        [JsonInclude]
+        public long? UpdatedAt { get; protected set; }
+        [JsonInclude]
+        public string V { get; protected set; }
 
         // Methods.
         public bool CheckForMetadataInfoChanged(MDFileData mdFileData)

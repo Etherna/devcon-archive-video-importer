@@ -13,7 +13,8 @@ namespace Etherna.DevconArchiveVideoParser.CommonData.Json
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             DictionaryKeyPolicy = JsonNamingPolicy.CamelCase,
             WriteIndented = false,
-            PropertyNameCaseInsensitive = true
+            PropertyNameCaseInsensitive = true,
+            IncludeFields = true
         };
 
         public static string ToJson<T>(T objectToSerialize) where T : class
@@ -21,7 +22,13 @@ namespace Etherna.DevconArchiveVideoParser.CommonData.Json
             return JsonSerializer.Serialize(objectToSerialize, serializeOptions);
         }
 
-        public static T? FromJson<T>(this string json) =>
-            JsonSerializer.Deserialize<T>(json, serializeOptions);
+        public static T? FromJson<T>(this string json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+                return default(T);
+
+            return JsonSerializer.Deserialize<T>(json, serializeOptions);
+        }
+            
     }
 }

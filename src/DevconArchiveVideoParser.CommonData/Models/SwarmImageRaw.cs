@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace Etherna.DevconArchiveVideoParser.CommonData.Models
 {
@@ -16,11 +17,18 @@ namespace Etherna.DevconArchiveVideoParser.CommonData.Models
             Sources = sources;
             V = v;
         }
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+        public SwarmImageRaw() { }
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 
         // Properties.
-        public float AspectRatio { get; }
-        public string Blurhash { get; }
-        public IReadOnlyDictionary<string, string> Sources { get; }
-        public string V { get; }
+        [JsonInclude]
+        public float AspectRatio { get; protected set; }
+        [JsonInclude]
+        public string Blurhash { get; protected set; }
+        [JsonInclude]
+        public IReadOnlyDictionary<string, string> Sources { get; protected set; }
+        [JsonInclude]
+        public string V { get; protected set; }
     }
 }

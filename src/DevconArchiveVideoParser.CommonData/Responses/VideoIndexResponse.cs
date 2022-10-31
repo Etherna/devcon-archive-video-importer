@@ -5,7 +5,7 @@ namespace Etherna.DevconArchiveVideoParser.CommonData.Responses
     public class VideoIndexResponse
     {
         // Properties.
-        public string Id { get; } = default!;
-        public MetadataVideo? LastValidManifest { get; }
+        public string Id { get; set; } = default!;
+        public MetadataVideo? LastValidManifest { get; set; }
     }
 }

@@ -78,7 +78,7 @@ namespace Etherna.DevconArchiveVideoParser.Services
             httpResponse.EnsureSuccessStatusCode();
 
             var responseText = await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
-            return JsonUtility.FromJson<MetadataVideo?>(responseText);
+            return JsonUtility.FromJson<VideoIndexResponse?>(responseText)?.LastValidManifest;
         }
 
         public async Task<IndexParamsResponse> GetParamsInfoAsync()

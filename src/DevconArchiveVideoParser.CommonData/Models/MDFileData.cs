@@ -42,21 +42,30 @@ namespace Etherna.DevconArchiveVideoParser.CommonData.Models
         {
             get
             {
+                return EthernaIndex?.Replace(PREFIX_ETHERNA_INDEX, "", StringComparison.InvariantCultureIgnoreCase);
+            }
+        }
+
+        public string? PermalinkId
+        {
+            get
+            {
                 return EthernaIndex?.Replace(PREFIX_ETHERNA_PERMALINK, "", StringComparison.InvariantCultureIgnoreCase);
             }
         }
 
         // Methods.
-        public string SetEthernaPermanent(string hashMetadataReference)
-        {
-            EthernaPermalink = $"{PREFIX_ETHERNA_PERMALINK}{hashMetadataReference}";
-            return EthernaPermalink;
-        }
 
         public string SetEthernaIndex(string indexVideoId)
         {
             EthernaIndex = $"{PREFIX_ETHERNA_INDEX}{indexVideoId}";
             return EthernaIndex;
+        }
+
+        public string SetEthernaPermanent(string hashMetadataReference)
+        {
+            EthernaPermalink = $"{PREFIX_ETHERNA_PERMALINK}{hashMetadataReference}";
+            return EthernaPermalink;
         }
     }
 }

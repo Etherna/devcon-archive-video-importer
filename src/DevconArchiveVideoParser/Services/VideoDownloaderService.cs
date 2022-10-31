@@ -1,7 +1,9 @@
 ﻿using Etherna.DevconArchiveVideoParser.CommonData.Interfaces;
 using Etherna.DevconArchiveVideoParser.CommonData.Models;
+using MetadataExtractor;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -9,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace Etherna.DevconArchiveVideoParser.Services
 {
-    internal class VideoImporterService
+    internal class VideoDownloaderService
     {
         private readonly IDownloadClient downloadClient;
         private readonly int? maxFilesize;
@@ -17,7 +19,7 @@ namespace Etherna.DevconArchiveVideoParser.Services
         private const int MAX_RETRY = 3;
 
         // Constractor.
-        public VideoImporterService(
+        public VideoDownloaderService(
             IDownloadClient downloadClient,
             string tmpFolder,
             int? maxFilesize)
@@ -49,7 +51,8 @@ namespace Etherna.DevconArchiveVideoParser.Services
 
                     var i = 0;
                     var downloaded = false;
-                    while (i < MAX_RETRY)
+                    while (i < MAX_RETRY &&
+                            !downloaded)
                         try
                         {
                             await downloadClient.DownloadAsync(
@@ -59,8 +62,8 @@ namespace Etherna.DevconArchiveVideoParser.Services
                         {
                             var percent = (int)(v.Item1 * 100 / v.Item2);
                             Console.Write($"Downloading resolution {videoInfo.Resolution}.. ( % {percent} ) {v.Item1 / (1024 * 1024)} / {v.Item2 / (1024 * 1024)} MB\r");
-                            downloaded = true;
                         })).ConfigureAwait(false);
+                            downloaded = true;
                         }
                         catch { }
                     if (!downloaded)
@@ -99,9 +102,28 @@ namespace Etherna.DevconArchiveVideoParser.Services
         // Private Methods.
         public static int GetDuration(string? pathToVideoFile)
         {
-            return 0;/*
             if (string.IsNullOrWhiteSpace(pathToVideoFile))
                 return 0;
+
+            using var stream = File.OpenRead(pathToVideoFile);
+            var directories = ImageMetadataReader.ReadMetadata(stream);
+            foreach (var itemDir in directories)
+            {
+                if (itemDir.Name != "QuickTime Movie Header")
+                    continue;
+                foreach (var itemTag in itemDir.Tags)
+                {
+                    if (itemTag.Name == "Duration" &&
+                        !string.IsNullOrEmpty(itemTag.Description))
+#pragma warning disable CA1305 // Specify IFormatProvider
+                        return Convert.ToInt32(TimeSpan.Parse(itemTag.Description).TotalSeconds);
+#pragma warning restore CA1305 // Specify IFormatProvider
+                }
+            }
+            //var subIfdDirectory = directories.OfType<ExifSubIfdDirectory>().FirstOrDefault();
+            //var dateTime = subIfdDirectory?.GetDescription(Exif.TagDateTime);
+            return 0;/*
+            
             var ffProbe = new NReco.VideoInfo.FFProbe();
             var videoInfo = ffProbe.GetMediaInfo(pathToVideoFile);
             return (int)Math.Ceiling(videoInfo.Duration.TotalSeconds);*/
