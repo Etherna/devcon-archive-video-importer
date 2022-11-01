@@ -18,7 +18,7 @@ namespace Etherna.DevconArchiveVideoParser.YoutubeDownloader.Clients
         private const int MAX_RETRY = 3;
 
         // Public Methods.
-        public async Task<List<VideoUploadDataItem>> DownloadAllResolutionVideoAsync(
+        public async Task<List<VideoDataItem>> DownloadAllResolutionVideoAsync(
             MDFileData mdFileData,
             int? maxFilesize)
         {
@@ -38,7 +38,7 @@ namespace Etherna.DevconArchiveVideoParser.YoutubeDownloader.Clients
                 .Distinct()
                 .OrderByDescending(res => res);
 
-            var sourceVideoInfos = new List<VideoUploadDataItem>();
+            var sourceVideoInfos = new List<VideoDataItem>();
             foreach (var currentRes in allResolutions)
             {
                 var videoDownload = videoWithAudio
@@ -49,7 +49,7 @@ namespace Etherna.DevconArchiveVideoParser.YoutubeDownloader.Clients
                     fileSize > maxFilesize * 1024 * 1024)
                     continue;
 
-                sourceVideoInfos.Add(new VideoUploadDataItem(
+                sourceVideoInfos.Add(new VideoDataItem(
                     videoDownload.AudioBitrate,
                     $"{videoDownload.Resolution}_{videoDownload.FullName}",
                     videoDownload.Resolution,

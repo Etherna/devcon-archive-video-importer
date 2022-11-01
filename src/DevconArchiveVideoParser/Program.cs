@@ -1,6 +1,7 @@
 ﻿using Etherna.BeeNet;
 using Etherna.BeeNet.Clients.DebugApi;
 using Etherna.BeeNet.Clients.GatewayApi;
+using Etherna.DevconArchiveVideoParser.CommonData.Dtos;
 using Etherna.DevconArchiveVideoParser.CommonData.Models;
 using Etherna.DevconArchiveVideoParser.Services;
 using Etherna.DevconArchiveVideoParser.SSO;
@@ -127,7 +128,7 @@ namespace DevconArchiveVideoParser
                     if (manifest is not null)
                     {
                         // Check if manifest contain the same url of current md file.
-                        var personalData = manifest.PersonalDataTyped<MetadataPersonalData>();
+                        var personalData = manifest.PersonalDataTyped<MetadataPersonalDataDto>();
                         if (personalData is not null &&
                             personalData.VideoId == mdFile.YoutubeId)
                         {
@@ -171,10 +172,10 @@ namespace DevconArchiveVideoParser
                     if (manifest is null)
                     {
                         // Download from source.
-                        var videoToUploadInfos = await videoDownloaderService.StartAsync(mdFile).ConfigureAwait(false);
+                        var videoData = await videoDownloaderService.StartDownloadAsync(mdFile).ConfigureAwait(false);
 
-                        if (videoToUploadInfos?.VideoUploadDataItems is null ||
-                            videoToUploadInfos.VideoUploadDataItems.Count <= 0)
+                        if (videoData?.VideoDataItems is null ||
+                            videoData.VideoDataItems.Count <= 0)
                         {
                             Console.ForegroundColor = ConsoleColor.DarkRed;
                             Console.WriteLine($"Error: video for download not found\n");
@@ -183,10 +184,10 @@ namespace DevconArchiveVideoParser
                         }
 
                         // Upload on bee node.
-                        await videoUploaderService.StartUploadAsync(videoToUploadInfos, pinVideo).ConfigureAwait(false);
+                        await videoUploaderService.StartUploadAsync(videoData, pinVideo).ConfigureAwait(false);
 
                         // Take duration from one of downloaded videos.
-                        duration = videoToUploadInfos.VideoUploadDataItems.First().Duration;
+                        duration = videoData.VideoDataItems.First().Duration;
                     }
                     else
                     {

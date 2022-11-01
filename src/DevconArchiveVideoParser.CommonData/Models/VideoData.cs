@@ -2,19 +2,19 @@
 
 namespace Etherna.DevconArchiveVideoParser.CommonData.Models
 {
-    public class VideoUploadData
+    public class VideoData
     {
         // Contractor.
-        public VideoUploadData(
+        public VideoData(
             string downloadedThumbnailPath,
             MDFileData mdFileData,
             string originalQuality,
-            ICollection<VideoUploadDataItem> videoUploadItems)
+            ICollection<VideoDataItem> videoUploadItems)
         {
             DownloadedThumbnailPath = downloadedThumbnailPath;
             MDFileData = mdFileData;
             OriginalQuality = originalQuality;
-            VideoUploadDataItems = videoUploadItems;
+            VideoDataItems = videoUploadItems;
         }
 
         // Properties.
@@ -22,7 +22,7 @@ namespace Etherna.DevconArchiveVideoParser.CommonData.Models
         public MDFileData MDFileData { get; set; }
         public string OriginalQuality { get; set; }
 #pragma warning disable CA2227 // Collection properties should be read only
-        public ICollection<VideoUploadDataItem> VideoUploadDataItems { get; set; }
+        public ICollection<VideoDataItem> VideoDataItems { get; set; }
 #pragma warning restore CA2227 // Collection properties should be read only
     }
 }

@@ -1,4 +1,6 @@
-﻿using Etherna.DevconArchiveVideoParser.CommonData.Json;
+﻿using Etherna.DevconArchiveVideoParser.CommonData.Dtos;
+using Etherna.DevconArchiveVideoParser.CommonData.Json;
+using Etherna.DevconArchiveVideoParser.CommonData.Models.MetadataVideoAgg;
 using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
@@ -20,7 +22,7 @@ namespace Etherna.DevconArchiveVideoParser.CommonData.Models
             string title,
             long? updatedAt,
             string v,
-            MetadataPersonalData metadataPersonalData)
+            MetadataPersonalDataDto metadataPersonalData)
         {
             BatchId = batchId;
             CreatedAt = createdAt;

@@ -1,9 +1,9 @@
 ﻿namespace Etherna.DevconArchiveVideoParser.CommonData.Models
 {
-    public class VideoUploadDataItem
+    public class VideoDataItem
     {
         // Contractor.
-        public VideoUploadDataItem(
+        public VideoDataItem(
             int audioBitrate,
             string filename,
             int resolution,

@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Etherna.DevconArchiveVideoParser.CommonData.Models
+namespace Etherna.DevconArchiveVideoParser.CommonData.Models.MetadataVideoAgg
 {
     public class MetadataVideoSource
     {

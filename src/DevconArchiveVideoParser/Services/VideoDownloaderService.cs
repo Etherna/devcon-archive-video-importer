@@ -30,7 +30,7 @@ namespace Etherna.DevconArchiveVideoParser.Services
         }
 
         // Public methods.
-        public async Task<VideoUploadData> StartAsync(MDFileData videoMd)
+        public async Task<VideoData> StartDownloadAsync(MDFileData videoMd)
         {
             if (string.IsNullOrWhiteSpace(videoMd?.YoutubeUrl))
                 throw new InvalidOperationException("Invalid YoutubeUrl");
@@ -87,7 +87,7 @@ namespace Etherna.DevconArchiveVideoParser.Services
                 var downloadedThumbnailPath = await downloadClient.DownloadThumbnailAsync(videoMd.YoutubeId!, tmpFolder).ConfigureAwait(false);
                 var originalQuality = videoResolutions.First().Resolution + "p";
 
-                return new VideoUploadData(downloadedThumbnailPath, videoMd, originalQuality, videoResolutions);
+                return new VideoData(downloadedThumbnailPath, videoMd, originalQuality, videoResolutions);
             }
             catch (Exception)
             {
