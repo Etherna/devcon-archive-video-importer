@@ -2,13 +2,11 @@
 using Etherna.DevconArchiveVideoParser.CommonData.Models;
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
-using System.Web;
 using VideoLibrary;
 
 namespace Etherna.DevconArchiveVideoParser.YoutubeDownloader.Clients
@@ -46,7 +44,7 @@ namespace Etherna.DevconArchiveVideoParser.YoutubeDownloader.Clients
                 var videoDownload = videoWithAudio
                 .First(video => video.Resolution == currentRes);
 
-                var fileSize = await GetContentLengthAsync(videoDownload.Uri, true).ConfigureAwait(false);
+                var fileSize = await GetContentLengthAsync(videoDownload.Uri).ConfigureAwait(false);
                 if (maxFilesize is not null &&
                     fileSize > maxFilesize * 1024 * 1024)
                     continue;
@@ -126,7 +124,7 @@ namespace Etherna.DevconArchiveVideoParser.YoutubeDownloader.Clients
 
         // Private Methods.
 
-        private async Task<long?> GetContentLengthAsync(string requestUri, bool ensureSuccess = true)
+        private async Task<long?> GetContentLengthAsync(string requestUri)
         {
             // retry for prevent case of network error.
             var i = 0;
@@ -136,8 +134,7 @@ namespace Etherna.DevconArchiveVideoParser.YoutubeDownloader.Clients
                     i++;
                     using var request = new HttpRequestMessage(HttpMethod.Head, requestUri);
                     var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
-                    if (ensureSuccess)
-                        response.EnsureSuccessStatusCode();
+                    response.EnsureSuccessStatusCode();
                     return response.Content.Headers.ContentLength;
                 }
                 catch { }

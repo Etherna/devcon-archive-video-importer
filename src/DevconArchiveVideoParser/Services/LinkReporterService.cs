@@ -1,65 +1,85 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Etherna.DevconArchiveVideoParser.Services
 {
     internal class LinkReporterService
     {
-        private const string DurationPrefix = "duration";
-        private const string EthernaIndexPrefix = "ethernaIndex";
-        private const string EthernaPermalinkPrefix = "ethernaPermalink";
-        private const string YouTubeUrlPrefix = "youtubeUrl";
+        private const string DurationPrefix = "duration:";
+        private const string EthernaIndexPrefix = "ethernaIndex:";
+        private const string EthernaPermalinkPrefix = "ethernaPermalink:";
 
-        private readonly IEnumerable<string> rawLines;
+        private readonly string mdFilePath;
 
-        public LinkReporterService(string path, IEnumerable<string> lines)
+        public LinkReporterService(string mdFilePath)
         {
-            Path = path;
+            if (string.IsNullOrWhiteSpace(mdFilePath))
+                throw new ArgumentNullException(nameof(mdFilePath));
 
-            rawLines = lines.Where(l => !l.StartsWith(EthernaIndexPrefix, StringComparison.OrdinalIgnoreCase) &&
-                                        !l.StartsWith(EthernaPermalinkPrefix, StringComparison.OrdinalIgnoreCase));
-
-            var ethernaIndexLine = lines.SingleOrDefault(line => line.StartsWith(EthernaIndexPrefix, StringComparison.OrdinalIgnoreCase));
-            if (ethernaIndexLine is not null)
-                EthernaIndex = ethernaIndexLine[(ethernaIndexLine.IndexOf(':', StringComparison.OrdinalIgnoreCase) + 1)..]
-                    .Trim(' ', '"');
-
-            var ethernaPermalinkLine = lines.SingleOrDefault(line => line.StartsWith(EthernaPermalinkPrefix, StringComparison.OrdinalIgnoreCase));
-            if (ethernaPermalinkLine is not null)
-                EthernaPermalink = ethernaPermalinkLine[(ethernaPermalinkLine.IndexOf(':', StringComparison.OrdinalIgnoreCase) + 1)..]
-                    .Trim(' ', '"');
-
-            var youtubeUrlLine = lines.SingleOrDefault(line => line.StartsWith(YouTubeUrlPrefix, StringComparison.OrdinalIgnoreCase));
-            if (youtubeUrlLine is not null)
-                YoutubeUrl = youtubeUrlLine[(youtubeUrlLine.IndexOf(':', StringComparison.OrdinalIgnoreCase) + 1)..]
-                    .Trim(' ', '"');
+            this.mdFilePath = mdFilePath;
         }
 
-        public IEnumerable<string> Lines
+        public async Task SetEthernaValueAsync(
+            string ethernaIndex,
+            string ethernaPermalink,
+            int duration)
         {
-            get
+            // Reaad all line.
+            var lines = File.ReadLines(mdFilePath).ToList();
+
+            // Set ethernaIndex.
+            var index = GetLineNumber(lines, EthernaIndexPrefix);
+            var ethernaIndexValue = $"{EthernaIndexPrefix} \"{ethernaIndex}\"";
+            if (index >= 0)
+                lines[index] = ethernaIndexValue;
+            else
+                lines.Insert(GetIndexOfInsertLine(lines.Count), ethernaIndex);
+
+            // Set ethernaPermalink.
+            index = GetLineNumber(lines, EthernaPermalinkPrefix);
+            var ethernaIndexLineValue = $"{EthernaPermalinkPrefix} \"{ethernaPermalink}\"";
+            if (index >= 0)
+                lines[index] = ethernaIndexLineValue;
+            else
+                lines.Insert(GetIndexOfInsertLine(lines.Count), ethernaIndexLineValue);
+
+            // Set duration.
+            index = GetLineNumber(lines, DurationPrefix);
+            var durationLineValue = $"{DurationPrefix} \"{duration}\"";
+            if (index >= 0)
+                lines[index] = durationLineValue;
+            else
+                lines.Insert(GetIndexOfInsertLine(lines.Count), durationLineValue);
+
+            // Save file.
+            await File.WriteAllLinesAsync(mdFilePath, lines).ConfigureAwait(false);
+        }
+
+        // Helpers.
+        private int GetLineNumber(List<string> lines, string prefix)
+        {
+            var lineIndex = 0;
+            foreach (var line in lines)
             {
-                var resultLines = new List<string>();
-                foreach (var line in rawLines)
-                {
-                    if (line.StartsWith(DurationPrefix, StringComparison.OrdinalIgnoreCase))
-                    {
-                        if (EthernaIndex is not null)
-                            resultLines.Add($"{EthernaIndexPrefix}: \"{EthernaIndex}\"");
-                        if (EthernaPermalink is not null)
-                            resultLines.Add($"{EthernaPermalinkPrefix}: \"{EthernaPermalink}\"");
-                    }
-                    resultLines.Add(line);
-                }
+                if (line.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                    return lineIndex;
 
-                return resultLines;
+                lineIndex++;
             }
+            return -1;
         }
 
-        public string? EthernaIndex { get; set; }
-        public string? EthernaPermalink { get; set; }
-        public string? YoutubeUrl { get; }
-        public string Path { get; }
+        private int GetIndexOfInsertLine(int lines)
+        {
+            // Last position. (Exclueded final ---)
+            if (lines > 1)
+                return lines - 2;
+            else if (lines == 1)
+                return 1;
+            return 0;
+        }
     }
 }

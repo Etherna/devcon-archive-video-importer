@@ -1,9 +1,7 @@
 ﻿using Etherna.BeeNet;
 using Etherna.BeeNet.Clients.DebugApi;
 using Etherna.BeeNet.Clients.GatewayApi;
-using Etherna.DevconArchiveVideoParser.CommonData.Json;
 using Etherna.DevconArchiveVideoParser.CommonData.Models;
-using Etherna.DevconArchiveVideoParser.CommonData.Responses;
 using Etherna.DevconArchiveVideoParser.Services;
 using Etherna.DevconArchiveVideoParser.SSO;
 using Etherna.DevconArchiveVideoParser.YoutubeDownloader.Clients;
@@ -169,32 +167,46 @@ namespace DevconArchiveVideoParser
                     }
                     Console.WriteLine($"Source Video: {mdFile.YoutubeUrl}");
 
-
+                    int duration;
                     if (manifest is null)
                     {
                         // Download from youtube.
                         var videoToUploadInfos = await videoDownloaderService.StartAsync(mdFile).ConfigureAwait(false);
 
-                        if (mdFile.Duration <= 0)
+                        if (videoToUploadInfos?.VideoUploadDataItems is null ||
+                            videoToUploadInfos.VideoUploadDataItems.Count <= 0)
                         {
                             Console.ForegroundColor = ConsoleColor.DarkRed;
-                            Console.WriteLine($"Error: Duration missing\n");
+                            Console.WriteLine($"Error: video for download not found\n");
                             Console.ResetColor();
                             continue;
                         }
 
                         // Upload on bee node.
                         await videoUploaderService.StartUploadAsync(videoToUploadInfos, pinVideo).ConfigureAwait(false);
+
+                        // Take duration from one of downloaded videos.
+                        duration = videoToUploadInfos.VideoUploadDataItems.First().Duration;
                     }
                     else
                     {
                         // Change metadata info.
                         var hashMetadataReference = await videoUploaderService.UploadMetadataAsync(manifest, mdFile, pinVideo).ConfigureAwait(false);
                         await indexerService.IndexManifestAsync(hashMetadataReference, mdFile).ConfigureAwait(false);
+
+                        // Take duration from previues md file saved.
+                        duration = mdFile.Duration;
                     }
 
-                    // TODO save MD file.
+                    // Save MD file with etherna values.
+                    Console.WriteLine($"Save etherna values in file {mdFile.MdFilepath}\n");
+                    var sourceMdFile = new LinkReporterService(mdFile.MdFilepath!);
+                    await sourceMdFile.SetEthernaValueAsync(
+                        mdFile.EthernaIndex!,
+                        mdFile.EthernaPermalink!,
+                        duration).ConfigureAwait(false);
 
+                    // Import completed.
                     Console.ForegroundColor = ConsoleColor.DarkGreen;
                     Console.WriteLine($"#{videoCount} Video imported successfully");
                     Console.ResetColor();

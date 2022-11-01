@@ -1,5 +1,4 @@
-﻿using Etherna.BeeNet;
-using Etherna.DevconArchiveVideoParser.CommonData.Json;
+﻿using Etherna.DevconArchiveVideoParser.CommonData.Json;
 using Etherna.DevconArchiveVideoParser.CommonData.Models;
 using Etherna.DevconArchiveVideoParser.CommonData.Requests;
 using Etherna.DevconArchiveVideoParser.CommonData.Responses;
@@ -18,6 +17,7 @@ namespace Etherna.DevconArchiveVideoParser.Services
         private const string ETHERNA_INDEX_PARAMS_INFO = "api/v0.3/System/parameters";
         private const string INDEX_API_CREATEBATCH = "api/v0.3/videos";
         private const string INDEX_API_MANIFEST = "api/v0.3/videos/{0}";
+        private const int MAX_RETRY = 3;
 
         public IndexerService(
             HttpClient httpClient,
@@ -39,8 +39,20 @@ namespace Etherna.DevconArchiveVideoParser.Services
             var haveIndexLink = false;
             if (!string.IsNullOrWhiteSpace(mdFileData.IndexVideoId))
             {
-                var httpGetResponse = await httpClient.GetAsync(new Uri(indexUrl + INDEX_API_CREATEBATCH + $"/{mdFileData.IndexVideoId}")).ConfigureAwait(false);
-                haveIndexLink = httpGetResponse.StatusCode == System.Net.HttpStatusCode.OK;
+                var i = 0;
+                var completed = false;
+                while (i < MAX_RETRY &&
+                        !completed)
+                    try
+                    {
+                        i++;
+                        var httpGetResponse = await httpClient.GetAsync(new Uri(indexUrl + INDEX_API_CREATEBATCH + $"/{mdFileData.IndexVideoId}")).ConfigureAwait(false);
+                        haveIndexLink = httpGetResponse.StatusCode == System.Net.HttpStatusCode.OK;
+                        completed = true;
+                    }
+                    catch { }
+                if (!completed)
+                    throw new InvalidOperationException($"Some error during get index video status");
             }
 
             HttpResponseMessage httpResponse;
@@ -48,20 +60,47 @@ namespace Etherna.DevconArchiveVideoParser.Services
             {
                 // Update manifest index.
                 Console.WriteLine($"Update Index: {mdFileData!.IndexVideoId}\t{hashReferenceMetadata}");
-                using var httpContent = new StringContent("{}", Encoding.UTF8, "application/json");
-                httpResponse = await httpClient.PutAsync(new Uri(indexUrl + INDEX_API_CREATEBATCH + $"/{mdFileData!.IndexVideoId}?newHash={hashReferenceMetadata}"), httpContent).ConfigureAwait(false);
-                httpResponse.EnsureSuccessStatusCode();
+                var i = 0;
+                var completed = false;
+                while (i < MAX_RETRY &&
+                        !completed)
+                    try
+                    {
+                        i++;
+                        using var httpContent = new StringContent("{}", Encoding.UTF8, "application/json");
+                        httpResponse = await httpClient.PutAsync(new Uri(indexUrl + INDEX_API_CREATEBATCH + $"/{mdFileData!.IndexVideoId}?newHash={hashReferenceMetadata}"), httpContent).ConfigureAwait(false);
+                        httpResponse.EnsureSuccessStatusCode();
+                        completed = true;
+                    }
+                    catch { }
+                if (!completed)
+                    throw new InvalidOperationException($"Some error during update index video");
+                
                 return mdFileData.IndexVideoId!;
             }
             else
             {
                 // Create new manifest index.
                 Console.WriteLine($"Create Index: {hashReferenceMetadata}");
-                var indexManifestRequest = new IndexManifestRequest(hashReferenceMetadata);
-                using var httpContent = new StringContent(JsonUtility.ToJson(indexManifestRequest), Encoding.UTF8, "application/json");
-                httpResponse = await httpClient.PostAsync(new Uri(indexUrl + INDEX_API_CREATEBATCH), httpContent).ConfigureAwait(false);
-                httpResponse.EnsureSuccessStatusCode();
-                var indexVideoId =  await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
+                var i = 0;
+                var completed = false;
+                var indexVideoId = "";
+                while (i < MAX_RETRY &&
+                        !completed)
+                    try
+                    {
+                        i++;
+                        var indexManifestRequest = new IndexManifestRequest(hashReferenceMetadata);
+                        using var httpContent = new StringContent(JsonUtility.ToJson(indexManifestRequest), Encoding.UTF8, "application/json");
+                        httpResponse = await httpClient.PostAsync(new Uri(indexUrl + INDEX_API_CREATEBATCH), httpContent).ConfigureAwait(false);
+                        httpResponse.EnsureSuccessStatusCode();
+                        indexVideoId = await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
+                        completed = true;
+                    }
+                    catch { }
+                if (!completed)
+                    throw new InvalidOperationException($"Some error during create index video");
+                
                 mdFileData.SetEthernaIndex(indexVideoId);
 
                 return indexVideoId;
