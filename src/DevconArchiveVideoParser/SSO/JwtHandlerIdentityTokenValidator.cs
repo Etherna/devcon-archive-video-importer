@@ -1,32 +1,30 @@
-﻿using System;
+﻿using Etherna.DevconArchiveVideoParser.Extensions;
+using IdentityModel;
+using IdentityModel.OidcClient;
+using IdentityModel.OidcClient.Results;
+using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Tokens;
+using System;
 using System.Collections.Generic;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
-using Etherna.DevconArchiveVideoParser.Extensions;
-using IdentityModel;
-using IdentityModel.OidcClient;
-using IdentityModel.OidcClient.Results;
-using Microsoft.Extensions.Logging;
-using Microsoft.IdentityModel.JsonWebTokens;
-using Microsoft.IdentityModel.Tokens;
 
 namespace Etherna.DevconArchiveVideoParser.SSO
 {
     public class JwtHandlerIdentityTokenValidator : IIdentityTokenValidator
     {
-        /// <inheritdoc />
-#pragma warning disable 1998
-        public async Task<IdentityTokenValidationResult> ValidateAsync(string identityToken, OidcClientOptions options, CancellationToken cancellationToken = default)
-#pragma warning restore 1998
+        // Methods.
+        public Task<IdentityTokenValidationResult> ValidateAsync(
+            string identityToken,
+            OidcClientOptions options,
+            CancellationToken cancellationToken = default)
         {
             if (options is null)
                 throw new ArgumentNullException(nameof(options));
 
-            //logger.LogTrace("Validate");
-
-            // setup general validation parameters
+            // Setup general validation parameters.
             var parameters = new TokenValidationParameters
             {
                 ValidIssuer = options.ProviderInformation.IssuerName,
@@ -34,11 +32,10 @@ namespace Etherna.DevconArchiveVideoParser.SSO
                 ValidateIssuer = options.Policy.ValidateTokenIssuerName,
                 NameClaimType = JwtClaimTypes.Name,
                 RoleClaimType = JwtClaimTypes.Role,
-
                 ClockSkew = options.ClockSkew
             };
 
-            // read the token signing algorithm
+            // Read the token signing algorithm.
             var handler = new JsonWebTokenHandler();
             JsonWebToken jwt;
 
@@ -48,10 +45,10 @@ namespace Etherna.DevconArchiveVideoParser.SSO
             }
             catch (Exception ex)
             {
-                return new IdentityTokenValidationResult
+                return Task.FromResult(new IdentityTokenValidationResult
                 {
                     Error = $"Error validating identity token: {ex}"
-                };
+                });
             }
 
             var algorithm = jwt.Alg;
@@ -60,50 +57,33 @@ namespace Etherna.DevconArchiveVideoParser.SSO
             if (string.Equals(algorithm, "none", StringComparison.OrdinalIgnoreCase))
             {
                 if (options.Policy.RequireIdentityTokenSignature)
-                {
-                    return new IdentityTokenValidationResult
+                    return Task.FromResult(new IdentityTokenValidationResult
                     {
                         Error = $"Identity token is not signed. Signatures are required by policy"
-                    };
-                }
+                    });
                 else
-                {
-                    //logger.LogInformation("Identity token is not signed. This is allowed by configuration.");
                     parameters.RequireSignedTokens = false;
-                }
             }
-            else
-            {
-                // check if signature algorithm is allowed by policy
-                if (!options.Policy.ValidSignatureAlgorithms.Contains(algorithm))
+            else if (!options.Policy.ValidSignatureAlgorithms.Contains(algorithm))
+                // Check if signature algorithm is allowed by policy.
+                return Task.FromResult(new IdentityTokenValidationResult
                 {
-                    return new IdentityTokenValidationResult
-                    {
-                        Error = $"Identity token uses invalid algorithm: {algorithm}"
-                    };
-                };
-            }
+                    Error = $"Identity token uses invalid algorithm: {algorithm}"
+                });
 
             var result = ValidateSignature(identityToken, handler, parameters, options);
             if (result.IsValid == false)
             {
                 if (result.Exception is SecurityTokenSignatureKeyNotFoundException)
-                {
-                    //logger.LogWarning("Key for validating token signature cannot be found. Refreshing keyset.");
-
-                    return new IdentityTokenValidationResult
+                    return Task.FromResult(new IdentityTokenValidationResult
                     {
                         Error = "invalid_signature"
-                    };
-                }
-
+                    });
                 if (result.Exception is SecurityTokenUnableToValidateException)
-                {
-                    return new IdentityTokenValidationResult
+                    return Task.FromResult(new IdentityTokenValidationResult
                     {
                         Error = "unable_to_validate_token"
-                    };
-                }
+                    });
 
                 throw result.Exception;
             }
@@ -111,20 +91,17 @@ namespace Etherna.DevconArchiveVideoParser.SSO
             var user = new ClaimsPrincipal(result.ClaimsIdentity);
 
             var error = CheckRequiredClaim(user);
-            if (error is not null &&
-                error.IsPresent())
-            {
-                return new IdentityTokenValidationResult
+            if (error is not null && error.IsPresent())
+                return Task.FromResult(new IdentityTokenValidationResult
                 {
                     Error = error
-                };
-            }
+                });
 
-            return new IdentityTokenValidationResult
+            return Task.FromResult(new IdentityTokenValidationResult
             {
                 User = user,
                 SignatureAlgorithm = algorithm
-            };
+            });
         }
 
         private TokenValidationResult ValidateSignature(
@@ -135,7 +112,7 @@ namespace Etherna.DevconArchiveVideoParser.SSO
         {
             if (parameters.RequireSignedTokens)
             {
-                // read keys from provider information
+                // Read keys from provider information.
                 var keys = new List<SecurityKey>();
 
                 foreach (var webKey in options.ProviderInformation.KeySet.Keys)
@@ -154,14 +131,11 @@ namespace Etherna.DevconArchiveVideoParser.SSO
                             };
 
                             keys.Add(key);
-
-                            //logger.LogDebug("Added signing key with kid: {kid}", key?.KeyId ?? "not set");
                         }
                     }
                     else if (webKey.X.IsPresent() && webKey.Y.IsPresent() && webKey.Crv.IsPresent())
                     {
-#pragma warning disable CA2000 // Dispose objects before losing scope
-                        var ec = ECDsa.Create(new ECParameters
+                        using var ec = ECDsa.Create(new ECParameters
                         {
                             Curve = GetCurveFromCrvValue(webKey.Crv),
                             Q = new ECPoint
@@ -170,7 +144,6 @@ namespace Etherna.DevconArchiveVideoParser.SSO
                                 Y = Base64Url.Decode(webKey.Y)
                             }
                         });
-#pragma warning restore CA2000 // Dispose objects before losing scope
 
                         var key = new ECDsaSecurityKey(ec)
                         {
@@ -178,10 +151,6 @@ namespace Etherna.DevconArchiveVideoParser.SSO
                         };
 
                         keys.Add(key);
-                    }
-                    else
-                    {
-                        //logger.LogDebug("Signing key with kid: {kid} currently not supported", webKey.Kid ?? "not set");
                     }
                 }
 
@@ -191,6 +160,7 @@ namespace Etherna.DevconArchiveVideoParser.SSO
             return handler.ValidateToken(identityToken, parameters);
         }
 
+        // Helpers.
         private static string? CheckRequiredClaim(ClaimsPrincipal user)
         {
             var requiredClaims = new List<string>
@@ -214,7 +184,7 @@ namespace Etherna.DevconArchiveVideoParser.SSO
             return null;
         }
 
-        internal static ECCurve GetCurveFromCrvValue(string crv)
+        private static ECCurve GetCurveFromCrvValue(string crv)
         {
             return crv switch
             {

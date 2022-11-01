@@ -170,7 +170,7 @@ namespace DevconArchiveVideoParser
                     int duration;
                     if (manifest is null)
                     {
-                        // Download from youtube.
+                        // Download from source.
                         var videoToUploadInfos = await videoDownloaderService.StartAsync(mdFile).ConfigureAwait(false);
 
                         if (videoToUploadInfos?.VideoUploadDataItems is null ||
