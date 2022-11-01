@@ -1,6 +1,6 @@
 ﻿namespace Etherna.DevconArchiveVideoParser.CommonData.Models
 {
-    public class MetadataExtraInfo
+    public class MetadataPersonalData
     {
         public string VideoId { get; set; } = default!;
         public string Mode { get; set; } = default!;

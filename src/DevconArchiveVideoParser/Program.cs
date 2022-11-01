@@ -127,9 +127,9 @@ namespace DevconArchiveVideoParser
                     if (manifest is not null)
                     {
                         // Check if manifest contain the same url of current md file.
-                        var extraInfo = manifest.ExtraInfoTyped<MetadataExtraInfo>();
-                        if (extraInfo is not null &&
-                            extraInfo.VideoId == mdFile.YoutubeId)
+                        var personalData = manifest.PersonalDataTyped<MetadataPersonalData>();
+                        if (personalData is not null &&
+                            personalData.VideoId == mdFile.YoutubeId)
                         {
                             // When YoutubeId is already uploaded, check for any change in metadata.
                             if (!manifest.CheckForMetadataInfoChanged(mdFile))

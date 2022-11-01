@@ -20,13 +20,13 @@ namespace Etherna.DevconArchiveVideoParser.CommonData.Models
             string title,
             long? updatedAt,
             string v,
-            MetadataExtraInfo metadataExtraInfo)
+            MetadataPersonalData metadataPersonalData)
         {
             BatchId = batchId;
             CreatedAt = createdAt;
             Description = description;
             Duration = duration;
-            ExtraInfo = JsonUtility.ToJson(metadataExtraInfo);
+            PersonalData = JsonUtility.ToJson(metadataPersonalData);
             OriginalQuality = originalQuality;
             OwnerAddress = ownerAddress;
             Sources = sources;
@@ -49,7 +49,7 @@ namespace Etherna.DevconArchiveVideoParser.CommonData.Models
         [JsonInclude]
         public long Duration { get; protected set; }
         [JsonInclude]
-        public string ExtraInfo { get; protected set; }
+        public string PersonalData { get; protected set; }
         [JsonInclude]
         public string? Hash { get; protected set; }
         [JsonInclude]
@@ -76,10 +76,10 @@ namespace Etherna.DevconArchiveVideoParser.CommonData.Models
             return mdFileData.Title != Title ||
                 mdFileData.Description != Description;
         }
-
-        public T? ExtraInfoTyped<T>() where T : class
+        
+        public T? PersonalDataTyped<T>() where T : class
         {
-            return JsonUtility.FromJson<T>(ExtraInfo);
+            return JsonUtility.FromJson<T>(PersonalData);
         }
 
 

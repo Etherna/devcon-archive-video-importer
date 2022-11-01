@@ -326,7 +326,7 @@ namespace Etherna.DevconArchiveVideoParser.Services
                 videoUploadData.MDFileData.Title,
                 null,
                 "1.1",
-                new MetadataExtraInfo { Mode = "importer", VideoId = videoUploadData.MDFileData.YoutubeId! });
+                new MetadataPersonalData { Mode = "importer", VideoId = videoUploadData.MDFileData.YoutubeId! });
 
             return await UploadMetadataAsync(metadataVideo, videoUploadData.MDFileData, swarmPin).ConfigureAwait(false);
         }
