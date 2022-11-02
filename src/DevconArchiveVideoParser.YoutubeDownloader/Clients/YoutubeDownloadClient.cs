@@ -13,11 +13,12 @@ namespace Etherna.DevconArchiveVideoParser.YoutubeDownloader.Clients
 {
     public class YoutubeDownloadClient : YouTube, IDownloadClient
     {
+        // Fields.
         private readonly HttpClient client = new();
         private readonly long chunkSize = 10_485_760;
         private const int MAX_RETRY = 3;
 
-        // Public Methods.
+        // Methods.
         public async Task<List<VideoDataItem>> DownloadAllResolutionVideoAsync(
             MDFileData mdFileData,
             int? maxFilesize)
@@ -122,8 +123,7 @@ namespace Etherna.DevconArchiveVideoParser.YoutubeDownloader.Clients
             throw new InvalidOperationException($"Some error during download of thumbnail {url}");
         }
 
-        // Private Methods.
-
+        // Helpers.
         private async Task<long?> GetContentLengthAsync(string requestUri)
         {
             // retry for prevent case of network error.

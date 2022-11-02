@@ -2,17 +2,15 @@
 using Etherna.DevconArchiveVideoParser.CommonData.Models;
 using MetadataExtractor;
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
 namespace Etherna.DevconArchiveVideoParser.Services
 {
-    internal class VideoDownloaderService
+    internal class VideoDownloaderService : IVideoDownloaderService
     {
+        // Fields.
         private readonly IDownloadClient downloadClient;
         private readonly int? maxFilesize;
         private readonly string tmpFolder;
@@ -96,7 +94,7 @@ namespace Etherna.DevconArchiveVideoParser.Services
         }
 
         // Private Methods.
-        public static int GetDuration(string? pathToVideoFile)
+        private static int GetDuration(string? pathToVideoFile)
         {
             if (string.IsNullOrWhiteSpace(pathToVideoFile))
                 return 0;

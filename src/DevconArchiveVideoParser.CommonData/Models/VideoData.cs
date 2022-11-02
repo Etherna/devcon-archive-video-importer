@@ -4,7 +4,7 @@ namespace Etherna.DevconArchiveVideoParser.CommonData.Models
 {
     public class VideoData
     {
-        // Contractor.
+        // Constructors.
         public VideoData(
             string downloadedThumbnailPath,
             MDFileData mdFileData,

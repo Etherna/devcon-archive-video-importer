@@ -8,12 +8,14 @@ namespace Etherna.DevconArchiveVideoParser.Services
 {
     internal class LinkReporterService
     {
+        // Fields.
         private const string DurationPrefix = "duration:";
         private const string EthernaIndexPrefix = "ethernaIndex:";
         private const string EthernaPermalinkPrefix = "ethernaPermalink:";
 
         private readonly string mdFilePath;
 
+        // Constructors.
         public LinkReporterService(string mdFilePath)
         {
             if (string.IsNullOrWhiteSpace(mdFilePath))
@@ -22,6 +24,7 @@ namespace Etherna.DevconArchiveVideoParser.Services
             this.mdFilePath = mdFilePath;
         }
 
+        // Methods.
         public async Task SetEthernaValueAsync(
             string ethernaIndex,
             string ethernaPermalink,

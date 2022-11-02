@@ -17,7 +17,7 @@ using System.Threading.Tasks;
 
 namespace Etherna.DevconArchiveVideoParser.Services
 {
-    internal class VideoUploaderService
+    internal class VideoUploaderService: IVideoUploaderService
     {
         // Privates.
         private readonly BeeNodeClient beeNodeClient;

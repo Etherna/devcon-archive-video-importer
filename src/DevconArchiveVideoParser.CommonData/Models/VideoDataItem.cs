@@ -2,7 +2,7 @@
 {
     public class VideoDataItem
     {
-        // Contractor.
+        // Constructors.
         public VideoDataItem(
             int audioBitrate,
             string filename,

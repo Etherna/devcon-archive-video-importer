@@ -2,7 +2,6 @@
 using Etherna.BeeNet.Clients.DebugApi;
 using Etherna.BeeNet.Clients.GatewayApi;
 using Etherna.DevconArchiveVideoParser.CommonData.Dtos;
-using Etherna.DevconArchiveVideoParser.CommonData.Models;
 using Etherna.DevconArchiveVideoParser.Services;
 using Etherna.DevconArchiveVideoParser.SSO;
 using Etherna.DevconArchiveVideoParser.YoutubeDownloader.Clients;

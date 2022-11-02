@@ -10,10 +10,12 @@ namespace Etherna.DevconArchiveVideoParser.Services
 {
     internal class MdVideoParserService
     {
+        // Fields.
         public static readonly string[] _keywordForArrayString = Array.Empty<string>();
         public static readonly string[] _keywordSkips = { "IMAGE", "IMAGEURL", "IPFSHASH", "EXPERTISE", "TRACK", "KEYWORDS", "TAGS", "SPEAKERS", "SOURCEID" };
         public static readonly string[] _keywordNames = { "IMAGE", "IMAGEURL", "EDITION", "TITLE", "DESCRIPTION", "YOUTUBEURL", "IPFSHASH", "DURATION", "EXPERTISE", "TYPE", "TRACK", "KEYWORDS", "TAGS", "SPEAKERS", "ETHERNAINDEX", "ETHERNAPERMALINK", "SOURCEID" };
 
+        // Methods.
         public static IEnumerable<MDFileData> ToVideoDataDtos(string folderRootPath)
         {
             var videoDataInfoDtos = new List<MDFileData>();
@@ -55,7 +57,7 @@ namespace Etherna.DevconArchiveVideoParser.Services
                                 videoDataInfoDto!.MdFilepath = sourceFile;
 
                             }
-#pragma warning disable CA1031 // Ignore exception
+#pragma warning disable CA1031 // Ignore exception type
                             catch (Exception ex)
 #pragma warning restore CA1031
                             {
@@ -83,6 +85,7 @@ namespace Etherna.DevconArchiveVideoParser.Services
             return videoDataInfoDtos.OrderBy(item => item.Edition);
         }
 
+        // Helper.
         private static string FormatLineForJson(string line, bool havePreviusRow, List<string> descriptionExtraRows)
         {
             if (string.IsNullOrWhiteSpace(line))

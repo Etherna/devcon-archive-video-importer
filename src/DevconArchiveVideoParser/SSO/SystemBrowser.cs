@@ -98,6 +98,7 @@ namespace Etherna.DevconArchiveVideoParser.SSO
 
         public string Url => _url;
 
+        // Constructors and dispose.
         public LoopbackHttpListener(int port, string? path = null)
         {
             path ??= String.Empty;
@@ -114,17 +115,6 @@ namespace Etherna.DevconArchiveVideoParser.SSO
             host.Start();
         }
 
-        void Configure(IApplicationBuilder app)
-        {
-            app.Run(async ctx =>
-            {
-                if (ctx.Request.Method == "GET")
-                    await SetResultAsync(ctx.Request.QueryString.Value ?? "", ctx).ConfigureAwait(false);
-                else
-                    ctx.Response.StatusCode = 405;
-            });
-        }
-
 #pragma warning disable CA1063 // Causated only by the Task.Delay
         public void Dispose()
 #pragma warning restore CA1063 // Implement IDisposable Correctly
@@ -139,7 +129,7 @@ namespace Etherna.DevconArchiveVideoParser.SSO
 
         protected virtual void Dispose(bool disposing)
         {
-            if (isDisposed) 
+            if (isDisposed)
                 return;
 
             if (disposing)
@@ -148,6 +138,19 @@ namespace Etherna.DevconArchiveVideoParser.SSO
             isDisposed = true;
         }
 
+        // Public Methods.
+        void Configure(IApplicationBuilder app)
+        {
+            app.Run(async ctx =>
+            {
+                if (ctx.Request.Method == "GET")
+                    await SetResultAsync(ctx.Request.QueryString.Value ?? "", ctx).ConfigureAwait(false);
+                else
+                    ctx.Response.StatusCode = 405;
+            });
+        }
+
+        // Private Methods.
         private async Task SetResultAsync(string value, HttpContext ctx)
         {
             _source.TrySetResult(value);

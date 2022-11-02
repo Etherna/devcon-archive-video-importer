@@ -84,7 +84,6 @@ namespace Etherna.DevconArchiveVideoParser.CommonData.Models
             return JsonUtility.FromJson<T>(PersonalData);
         }
 
-
         public void UpdateMetadataInfo(MDFileData mdFileData)
         {
             if (mdFileData is null)
