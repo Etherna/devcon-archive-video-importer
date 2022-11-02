@@ -31,6 +31,8 @@ namespace DevconArchiveVideoParser
         private const string BEENODE_URL = "https://gateway.etherna.io/";
         private const string ETHERNA_INDEX = "https://index.etherna.io/";
         private const string ETHERNA_GATEWAY = "https://gateway.etherna.io/";
+        private const string SSO_AUTHORITY = "https://sso.etherna.io/";
+        private const string SSO_CLIENT_ID = "ethernaVideoImporterId";
 
         static async Task Main(string[] args)
         {
@@ -107,8 +109,7 @@ namespace DevconArchiveVideoParser
                 beeNodeClient,
                 indexerService,
                 ETHERNA_GATEWAY,
-                userEthAddr,
-                offerVideo);
+                userEthAddr);
 
             // Import each video.
             var indexParams = await indexerService.GetParamsInfoAsync().ConfigureAwait(false);
@@ -183,7 +184,7 @@ namespace DevconArchiveVideoParser
                         }
 
                         // Upload on bee node.
-                        await videoUploaderService.StartUploadAsync(videoData, pinVideo).ConfigureAwait(false);
+                        await videoUploaderService.StartUploadAsync(videoData, pinVideo, offerVideo).ConfigureAwait(false);
 
                         // Take duration from one of downloaded videos.
                         duration = videoData.VideoDataItems.First().Duration;
@@ -246,8 +247,8 @@ namespace DevconArchiveVideoParser
 
             var options = new OidcClientOptions
             {
-                Authority = "https://sso.etherna.io/",
-                ClientId = "ethernaVideoImporterId",
+                Authority = SSO_AUTHORITY,
+                ClientId = SSO_CLIENT_ID,
                 RedirectUri = redirectUri,
                 Scope = "openid profile offline_access ether_accounts userApi.gateway userApi.index",
                 FilterClaims = false,

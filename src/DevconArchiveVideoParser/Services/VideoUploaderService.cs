@@ -19,20 +19,19 @@ namespace Etherna.DevconArchiveVideoParser.Services
 {
     internal class VideoUploaderService: IVideoUploaderService
     {
-        // Privates.
+        // Fields.
         private readonly BeeNodeClient beeNodeClient;
         private readonly HttpClient httpClient;
         private readonly IndexerService indexerService;
         private readonly string gatewayUrl;
-        private readonly bool offerVideo;
         private readonly string userEthAddr;
 
 
         // Const.
+        private readonly TimeSpan BATCH_CHECK_TIME = new (0, 0, 0, 10);
         private const int BATCH_DEEP = 20;
-        private const int BATCH_DURANTION_TIME = 31536000;
-        private const int BATCH_WAITING_TIME = 7 * 1000;
-        private const int BATCH_TIMEOUT_TIME = 5 * 60 * 1000;
+        private readonly TimeSpan BATCH_DURANTION_TIME = new (365, 0, 0, 0);
+        private readonly TimeSpan BATCH_TIMEOUT_TIME = new (0, 0, 7, 0);
         private const int BLOCK_TIME = 5;
         private const string GATEWAY_API_CREATEBATCH = "api/v0.3/users/current/batches";
         private const string GATEWAY_API_CHAINSTATE = "api/v0.3/system/chainstate";
@@ -47,8 +46,7 @@ namespace Etherna.DevconArchiveVideoParser.Services
             BeeNodeClient beeNodeClient,
             IndexerService indexerService,
             string gatewayUrl,
-            string userEthAddr,
-            bool offerVideo)
+            string userEthAddr)
         {
             if (beeNodeClient is null)
                 throw new ArgumentNullException(nameof(beeNodeClient));
@@ -62,13 +60,13 @@ namespace Etherna.DevconArchiveVideoParser.Services
             this.indexerService = indexerService;
             this.gatewayUrl = gatewayUrl;
             this.userEthAddr = userEthAddr;
-            this.offerVideo = offerVideo;
         }
 
         // Public methods.
         public async Task StartUploadAsync(
             VideoData videoUploadData,
-            bool pinVideo)
+            bool pinVideo,
+            bool offerVideo)
         {
             if (videoUploadData?.VideoDataItems is null ||
                 videoUploadData.VideoDataItems.Count <= 0)
@@ -82,11 +80,11 @@ namespace Etherna.DevconArchiveVideoParser.Services
 
             // Check and wait until created batchId is avaiable.
             Console.WriteLine("Waiting for batch ready...");
-            int timeWaited = 0;
+            double timeWaited = 0;
             do
             {
                 // Timeout throw exception.
-                if (timeWaited >= BATCH_TIMEOUT_TIME)
+                if (timeWaited >= BATCH_TIMEOUT_TIME.TotalSeconds)
                 {
                     var ex = new InvalidOperationException("Batch not avaiable");
                     ex.Data.Add("BatchReferenceId", batchReferenceId);
@@ -94,9 +92,9 @@ namespace Etherna.DevconArchiveVideoParser.Services
                 }
 
                 // Waiting for batchId avaiable.
-                await Task.Delay(BATCH_WAITING_TIME).ConfigureAwait(false);
+                await Task.Delay((int)BATCH_CHECK_TIME.TotalMilliseconds).ConfigureAwait(false);
                 batchId = await GetBatchIdFromReference(batchReferenceId).ConfigureAwait(false);
-                timeWaited += BATCH_WAITING_TIME;
+                timeWaited += BATCH_CHECK_TIME.TotalSeconds;
             } while (string.IsNullOrWhiteSpace(batchId));
 
             // Check and wait until created batch is usable.
@@ -105,7 +103,7 @@ namespace Etherna.DevconArchiveVideoParser.Services
             do
             {
                 // Timeout throw exception.
-                if (timeWaited >= BATCH_TIMEOUT_TIME)
+                if (timeWaited >= BATCH_TIMEOUT_TIME.TotalSeconds)
                 {
                     var ex = new InvalidOperationException("Batch not usable");
                     ex.Data.Add("BatchId", batchId);
@@ -113,9 +111,9 @@ namespace Etherna.DevconArchiveVideoParser.Services
                 }
 
                 // Waiting for batch ready.
-                await Task.Delay(BATCH_WAITING_TIME).ConfigureAwait(false);
+                await Task.Delay((int)BATCH_CHECK_TIME.TotalMilliseconds).ConfigureAwait(false);
                 batchUsable = await GetBatchUsableAsync(batchId).ConfigureAwait(false);
-                timeWaited += BATCH_WAITING_TIME;
+                timeWaited += BATCH_CHECK_TIME.TotalSeconds;
             } while (!batchUsable);
 
             // Upload thumbnail only one time.
@@ -208,7 +206,7 @@ namespace Etherna.DevconArchiveVideoParser.Services
             if (chainPriceDto is null)
                 throw new ArgumentNullException("Chainstate result is null");
 
-            var amount = (long)BATCH_DURANTION_TIME * BLOCK_TIME / chainPriceDto.CurrentPrice;
+            var amount = (long)BATCH_DURANTION_TIME.TotalSeconds * BLOCK_TIME / chainPriceDto.CurrentPrice;
             using var httpContent = new StringContent("{}", Encoding.UTF8, "application/json");
             httpResponse = await httpClient.PostAsync(new Uri(gatewayUrl + GATEWAY_API_CREATEBATCH + $"?depth={BATCH_DEEP}&amount={amount}"), httpContent).ConfigureAwait(false);
 

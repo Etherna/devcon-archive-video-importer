@@ -45,7 +45,8 @@ namespace Etherna.DevconArchiveVideoParser.YoutubeDownloader.Clients
                 var videoDownload = videoWithAudio
                 .First(video => video.Resolution == currentRes);
 
-                var fileSize = await GetContentLengthAsync(videoDownload.Uri).ConfigureAwait(false);
+                var videoUri = new Uri(videoDownload.Uri);
+                var fileSize = await GetContentLengthAsync(videoUri).ConfigureAwait(false);
                 if (maxFilesize is not null &&
                     fileSize > maxFilesize * 1024 * 1024)
                     continue;
@@ -54,7 +55,7 @@ namespace Etherna.DevconArchiveVideoParser.YoutubeDownloader.Clients
                     videoDownload.AudioBitrate,
                     $"{videoDownload.Resolution}_{videoDownload.FullName}",
                     videoDownload.Resolution,
-                    videoDownload.Uri));
+                    videoUri));
             }
 
             return sourceVideoInfos;
@@ -63,12 +64,12 @@ namespace Etherna.DevconArchiveVideoParser.YoutubeDownloader.Clients
         public async Task DownloadAsync(
             Uri uri,
             string filePath,
-            IProgress<Tuple<long, long>> progress)
+            IProgress<(long totalBytesCopied, long fileSize)> progress)
         {
             if (uri is null)
                 throw new ArgumentNullException(nameof(uri));
 
-            var fileSize = await GetContentLengthAsync(uri.AbsoluteUri).ConfigureAwait(false) ?? 0;
+            var fileSize = await GetContentLengthAsync(uri).ConfigureAwait(false) ?? 0;
             if (fileSize == 0)
             {
                 throw new InvalidOperationException("File has no any content !");
@@ -98,7 +99,7 @@ namespace Etherna.DevconArchiveVideoParser.YoutubeDownloader.Clients
                         await output.WriteAsync(buffer.AsMemory(0, bytesCopied)).ConfigureAwait(false);
                         totalBytesCopied += bytesCopied;
                         if (progress is not null)
-                            progress.Report(new Tuple<long, long>(totalBytesCopied, fileSize));
+                            progress.Report(new (totalBytesCopied, fileSize));
                     } while (bytesCopied > 0);
                 }
             }
@@ -124,7 +125,7 @@ namespace Etherna.DevconArchiveVideoParser.YoutubeDownloader.Clients
         }
 
         // Helpers.
-        private async Task<long?> GetContentLengthAsync(string requestUri)
+        private async Task<long?> GetContentLengthAsync(Uri requestUri)
         {
             // retry for prevent case of network error.
             var i = 0;

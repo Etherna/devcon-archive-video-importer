@@ -55,12 +55,12 @@ namespace Etherna.DevconArchiveVideoParser.Services
                         {
                             i++;
                             await downloadClient.DownloadAsync(
-                                new Uri(videoInfo.Uri),
+                                videoInfo.Uri,
                                 videoInfo.DownloadedFilePath,
-                                new Progress<Tuple<long, long>>((Tuple<long, long> v) =>
+                                new Progress<(long totalBytesCopied, long fileSize)>((progressStatus) =>
                                 {
-                                    var percent = (int)(v.Item1 * 100 / v.Item2);
-                                    Console.Write($"Downloading resolution {videoInfo.Resolution}.. ( % {percent} ) {v.Item1 / (1024 * 1024)} / {v.Item2 / (1024 * 1024)} MB\r");
+                                    var percent = (int)(progressStatus.totalBytesCopied * 100 / progressStatus.fileSize);
+                                    Console.Write($"Downloading resolution {videoInfo.Resolution}.. ( % {percent} ) {progressStatus.totalBytesCopied / (1024 * 1024)} / {progressStatus.fileSize / (1024 * 1024)} MB\r");
                                 })).ConfigureAwait(false);
                             downloaded = true;
                         }

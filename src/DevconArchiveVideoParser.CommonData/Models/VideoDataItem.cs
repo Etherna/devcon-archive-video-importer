@@ -1,4 +1,6 @@
-﻿namespace Etherna.DevconArchiveVideoParser.CommonData.Models
+﻿using System;
+
+namespace Etherna.DevconArchiveVideoParser.CommonData.Models
 {
     public class VideoDataItem
     {
@@ -7,7 +9,7 @@
             int audioBitrate,
             string filename,
             int resolution,
-            string uri)
+            Uri uri)
         {
             AudioBitrate = audioBitrate;
             Filename = filename;
@@ -26,6 +28,6 @@
         public string Filename { get; set; }
         public int Resolution { get; set; }
         public long Size { get; set; }
-        public string Uri { get; set; }
+        public Uri Uri { get; set; }
     }
 }

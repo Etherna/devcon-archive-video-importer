@@ -7,7 +7,8 @@ namespace Etherna.DevconArchiveVideoParser.Services
     {
         public Task StartUploadAsync(
             VideoData videoUploadData,
-            bool pinVideo);
+            bool pinVideo,
+            bool offerVideo);
 
         public Task<string> UploadMetadataAsync(
             MetadataVideo metadataVideo,
