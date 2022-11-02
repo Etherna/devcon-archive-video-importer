@@ -7,12 +7,12 @@ namespace Etherna.DevconArchiveVideoParser.CommonData.Models
         // Constructors.
         public VideoDataItem(
             int audioBitrate,
-            string filename,
+            string name,
             int resolution,
             Uri uri)
         {
             AudioBitrate = audioBitrate;
-            Filename = filename;
+            Name = name;
             Resolution = resolution;
             Uri = uri;
         }
@@ -25,7 +25,7 @@ namespace Etherna.DevconArchiveVideoParser.CommonData.Models
         public string? DownloadedFilePath { get; set; }
         public string? DownloadedThumbnailPath { get; set; }
         public string? UploadedVideoReference { get; set; }
-        public string Filename { get; set; }
+        public string Name { get; set; }
         public int Resolution { get; set; }
         public long Size { get; set; }
         public Uri Uri { get; set; }

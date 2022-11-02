@@ -45,7 +45,7 @@ namespace Etherna.DevconArchiveVideoParser.Services
                 foreach (var videoInfo in videoResolutions)
                 {
                     // Start download and show progress.
-                    videoInfo.DownloadedFilePath = Path.Combine(tmpFolder, videoInfo.Filename);
+                    videoInfo.DownloadedFilePath = Path.Combine(tmpFolder, videoInfo.Name);
 
                     var i = 0;
                     var downloaded = false;
@@ -71,7 +71,7 @@ namespace Etherna.DevconArchiveVideoParser.Services
 
                     // Set video info from downloaded video.
                     var fileSize = new FileInfo(videoInfo.DownloadedFilePath!).Length;
-                    videoInfo.DownloadedFileName = videoInfo.Filename;
+                    videoInfo.DownloadedFileName = videoInfo.Name;
                     videoInfo.Size = fileSize;
                     videoInfo.Duration = GetDuration(videoInfo.DownloadedFilePath);
                     if (videoInfo.Duration <= 0)
