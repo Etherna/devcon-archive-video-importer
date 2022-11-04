@@ -1,10 +1,10 @@
-﻿using Etherna.DevconArchiveVideoParser.CommonData.Models;
+﻿using Etherna.DevconArchiveVideoParser.Models;
 using System.Threading.Tasks;
 
-namespace Etherna.DevconArchiveVideoParser.Services
+namespace Etherna.DevconArchiveVideoImporter.Services
 {
     internal interface IVideoDownloaderService
     {
-        Task<VideoData> StartDownloadAsync(MDFileData videoMd);
+        Task<VideoData> StartDownloadAsync(VideoData videoData);
     }
 }

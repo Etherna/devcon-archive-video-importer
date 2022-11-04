@@ -1,4 +1,4 @@
-﻿using Etherna.DevconArchiveVideoParser.CommonData.Models;
+﻿using Etherna.DevconArchiveVideoParser.Models;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 
-namespace Etherna.DevconArchiveVideoParser.Services
+namespace Etherna.DevconArchiveVideoImporter.Services
 {
     internal class MdVideoParserService
     {
@@ -16,9 +16,9 @@ namespace Etherna.DevconArchiveVideoParser.Services
         public static readonly string[] _keywordNames = { "IMAGE", "IMAGEURL", "EDITION", "TITLE", "DESCRIPTION", "YOUTUBEURL", "IPFSHASH", "DURATION", "EXPERTISE", "TYPE", "TRACK", "KEYWORDS", "TAGS", "SPEAKERS", "ETHERNAINDEX", "ETHERNAPERMALINK", "SOURCEID" };
 
         // Methods.
-        public static IEnumerable<MDFileData> ToVideoDataDtos(string folderRootPath)
+        public static IEnumerable<VideoData> ToVideoDataDtos(string folderRootPath)
         {
-            var videoDataInfoDtos = new List<MDFileData>();
+            var videoDataInfoDtos = new List<VideoData>();
             var files = Directory.GetFiles(folderRootPath, "*.md", SearchOption.AllDirectories);
 
             Console.WriteLine($"Total files: {files.Length}");
@@ -47,10 +47,10 @@ namespace Etherna.DevconArchiveVideoParser.Services
                         {
                             itemConvertedToJson.AppendLine("}");
 
-                            MDFileData? videoDataInfoDto = null;
+                            VideoData? videoDataInfoDto = null;
                             try
                             {
-                                videoDataInfoDto = JsonSerializer.Deserialize<MDFileData>(
+                                videoDataInfoDto = JsonSerializer.Deserialize<VideoData>(
                                     itemConvertedToJson.ToString(),
                                     new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
                                 videoDataInfoDto!.Id = sourceFile!.Replace(folderRootPath, "", StringComparison.InvariantCultureIgnoreCase);

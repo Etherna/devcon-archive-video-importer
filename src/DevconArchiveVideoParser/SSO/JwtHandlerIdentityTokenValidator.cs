@@ -1,5 +1,4 @@
-﻿using Etherna.DevconArchiveVideoParser.Extensions;
-using IdentityModel;
+﻿using IdentityModel;
 using IdentityModel.OidcClient;
 using IdentityModel.OidcClient.Results;
 using Microsoft.IdentityModel.JsonWebTokens;
@@ -11,7 +10,7 @@ using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Etherna.DevconArchiveVideoParser.SSO
+namespace Etherna.DevconArchiveVideoImporter.SSO
 {
     public class JwtHandlerIdentityTokenValidator : IIdentityTokenValidator
     {
@@ -91,7 +90,7 @@ namespace Etherna.DevconArchiveVideoParser.SSO
             var user = new ClaimsPrincipal(result.ClaimsIdentity);
 
             var error = CheckRequiredClaim(user);
-            if (error is not null && error.IsPresent())
+            if (!string.IsNullOrWhiteSpace(error))
                 return Task.FromResult(new IdentityTokenValidationResult
                 {
                     Error = error
@@ -117,7 +116,8 @@ namespace Etherna.DevconArchiveVideoParser.SSO
 
                 foreach (var webKey in options.ProviderInformation.KeySet.Keys)
                 {
-                    if (webKey.E.IsPresent() && webKey.N.IsPresent())
+                    if (!string.IsNullOrWhiteSpace(webKey.E) &&
+                        !string.IsNullOrWhiteSpace(webKey.N))
                     {
                         // only add keys used for signatures
                         if (webKey.Use == "sig" || webKey.Use == null)
@@ -133,7 +133,9 @@ namespace Etherna.DevconArchiveVideoParser.SSO
                             keys.Add(key);
                         }
                     }
-                    else if (webKey.X.IsPresent() && webKey.Y.IsPresent() && webKey.Crv.IsPresent())
+                    else if (!string.IsNullOrWhiteSpace(webKey.X) &&
+                        !string.IsNullOrWhiteSpace(webKey.Y) &&
+                        !string.IsNullOrWhiteSpace(webKey.Crv))
                     {
                         using var ec = ECDsa.Create(new ECParameters
                         {

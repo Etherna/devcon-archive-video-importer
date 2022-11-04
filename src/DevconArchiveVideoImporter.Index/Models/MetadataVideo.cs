@@ -1,11 +1,9 @@
-﻿using Etherna.DevconArchiveVideoParser.CommonData.Dtos;
-using Etherna.DevconArchiveVideoParser.CommonData.Json;
-using Etherna.DevconArchiveVideoParser.CommonData.Models.MetadataVideoAgg;
+﻿using Etherna.DevconArchiveVideoImporter.Index.Models.MetadataVideoAgg;
 using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace Etherna.DevconArchiveVideoParser.CommonData.Models
+namespace Etherna.DevconArchiveVideoImporter.Index.Models
 {
     public class MetadataVideo
     {
@@ -22,13 +20,13 @@ namespace Etherna.DevconArchiveVideoParser.CommonData.Models
             string title,
             long? updatedAt,
             string v,
-            MetadataPersonalDataDto metadataPersonalData)
+            string jsonMetadataPersonalData)
         {
             BatchId = batchId;
             CreatedAt = createdAt;
             Description = description;
             Duration = duration;
-            PersonalData = JsonUtility.ToJson(metadataPersonalData);
+            PersonalData = jsonMetadataPersonalData;
             OriginalQuality = originalQuality;
             OwnerAddress = ownerAddress;
             Sources = sources;
@@ -70,27 +68,20 @@ namespace Etherna.DevconArchiveVideoParser.CommonData.Models
         public string V { get; protected set; }
 
         // Methods.
-        public bool CheckForMetadataInfoChanged(MDFileData mdFileData)
+        public bool CheckForMetadataInfoChanged(
+            string description,
+            string title)
         {
-            if (mdFileData is null)
-                return true;
-
-            return mdFileData.Title != Title ||
-                mdFileData.Description != Description;
-        }
-        
-        public T? PersonalDataTyped<T>() where T : class
-        {
-            return JsonUtility.FromJson<T>(PersonalData);
+            return title != Title ||
+                description != Description;
         }
 
-        public void UpdateMetadataInfo(MDFileData mdFileData)
+        public void UpdateMetadataInfo(
+            string description,
+            string title)
         {
-            if (mdFileData is null)
-                throw new ArgumentNullException(nameof(mdFileData));
-
-            Description = mdFileData.Description ?? "";
-            Title = mdFileData.Title ?? "";
+            Description = description ?? "";
+            Title = title ?? "";
         }
     }
 }

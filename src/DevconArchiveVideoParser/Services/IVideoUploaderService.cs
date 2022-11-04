@@ -1,18 +1,19 @@
-﻿using Etherna.DevconArchiveVideoParser.CommonData.Models;
+﻿using Etherna.DevconArchiveVideoImporter.Index.Models;
+using Etherna.DevconArchiveVideoParser.Models;
 using System.Threading.Tasks;
 
-namespace Etherna.DevconArchiveVideoParser.Services
+namespace Etherna.DevconArchiveVideoImporter.Services
 {
     internal interface IVideoUploaderService
     {
         public Task StartUploadAsync(
-            VideoData videoUploadData,
+            VideoData videoData,
             bool pinVideo,
             bool offerVideo);
 
         public Task<string> UploadMetadataAsync(
             MetadataVideo metadataVideo,
-            MDFileData mdFileData,
+            VideoData videoData,
             bool swarmPin);
     }
 }

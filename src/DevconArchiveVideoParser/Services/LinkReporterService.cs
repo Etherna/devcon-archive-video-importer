@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Etherna.DevconArchiveVideoParser.Services
+namespace Etherna.DevconArchiveVideoImporter.Services
 {
     internal class LinkReporterService
     {

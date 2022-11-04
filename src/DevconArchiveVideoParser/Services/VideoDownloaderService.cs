@@ -1,12 +1,11 @@
-﻿using Etherna.DevconArchiveVideoParser.CommonData.Interfaces;
-using Etherna.DevconArchiveVideoParser.CommonData.Models;
+﻿using Etherna.DevconArchiveVideoParser.Models;
 using MetadataExtractor;
 using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Etherna.DevconArchiveVideoParser.Services
+namespace Etherna.DevconArchiveVideoImporter.Services
 {
     internal class VideoDownloaderService : IVideoDownloaderService
     {
@@ -28,15 +27,15 @@ namespace Etherna.DevconArchiveVideoParser.Services
         }
 
         // Public methods.
-        public async Task<VideoData> StartDownloadAsync(MDFileData videoMd)
+        public async Task<VideoData> StartDownloadAsync(VideoData videoData)
         {
-            if (string.IsNullOrWhiteSpace(videoMd?.YoutubeUrl))
+            if (string.IsNullOrWhiteSpace(videoData?.YoutubeUrl))
                 throw new InvalidOperationException("Invalid YoutubeUrl");
 
             try
             {
                 // Take best video resolution.
-                var videoResolutions = await downloadClient.DownloadAllResolutionVideoAsync(videoMd, maxFilesize).ConfigureAwait(false);
+                var videoResolutions = await downloadClient.DownloadAllResolutionVideoAsync(videoData, maxFilesize).ConfigureAwait(false);
                 if (videoResolutions is null ||
                     videoResolutions.Count == 0)
                     throw new InvalidOperationException($"Not found video");
@@ -82,10 +81,13 @@ namespace Etherna.DevconArchiveVideoParser.Services
                 }
 
                 // Download Thumbnail.
-                var downloadedThumbnailPath = await downloadClient.DownloadThumbnailAsync(videoMd.YoutubeId!, tmpFolder).ConfigureAwait(false);
+                var downloadedThumbnailPath = await downloadClient.DownloadThumbnailAsync(videoData.YoutubeId!, tmpFolder).ConfigureAwait(false);
                 var originalQuality = videoResolutions.First().Resolution + "p";
 
-                return new VideoData(downloadedThumbnailPath, videoMd, originalQuality, videoResolutions);
+                videoData.DownloadedThumbnailPath = downloadedThumbnailPath;
+                videoData.VideoDataResolutions = videoResolutions;
+
+                return videoData;
             }
             catch (Exception)
             {

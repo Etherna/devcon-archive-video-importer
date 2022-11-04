@@ -1,4 +1,4 @@
-﻿namespace Etherna.DevconArchiveVideoParser.CommonData.Responses
+﻿namespace Etherna.DevconArchiveVideoImporter.Responses
 {
     public class BatchMinimalInfoResponse
     {

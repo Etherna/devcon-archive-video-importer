@@ -1,14 +1,15 @@
-﻿using Etherna.DevconArchiveVideoParser.CommonData.Json;
-using Etherna.DevconArchiveVideoParser.CommonData.Models;
+﻿using Etherna.DevconArchiveVideoImporter.Index.Models;
+using Etherna.DevconArchiveVideoImporter.Json;
+using Etherna.DevconArchiveVideoImporter.Responses;
 using Etherna.DevconArchiveVideoParser.CommonData.Requests;
-using Etherna.DevconArchiveVideoParser.CommonData.Responses;
+using Etherna.DevconArchiveVideoParser.Models;
 using System;
 using System.Globalization;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Etherna.DevconArchiveVideoParser.Services
+namespace Etherna.DevconArchiveVideoImporter.Services
 {
     public class IndexerService
     {
@@ -30,14 +31,14 @@ namespace Etherna.DevconArchiveVideoParser.Services
         // Methods.
         public async Task<string> IndexManifestAsync(
             string hashReferenceMetadata,
-            MDFileData mdFileData)
+            VideoData videoData)
         {
             //TODO Insert retry for http error.
-            if (mdFileData is null)
-                throw new ArgumentNullException(nameof(mdFileData));
+            if (videoData is null)
+                throw new ArgumentNullException(nameof(videoData));
 
             var haveIndexLink = false;
-            if (!string.IsNullOrWhiteSpace(mdFileData.IndexVideoId))
+            if (!string.IsNullOrWhiteSpace(videoData.IndexVideoId))
             {
                 var i = 0;
                 var completed = false;
@@ -46,7 +47,7 @@ namespace Etherna.DevconArchiveVideoParser.Services
                     try
                     {
                         i++;
-                        var httpGetResponse = await httpClient.GetAsync(new Uri(indexUrl + INDEX_API_CREATEBATCH + $"/{mdFileData.IndexVideoId}")).ConfigureAwait(false);
+                        var httpGetResponse = await httpClient.GetAsync(new Uri(indexUrl + INDEX_API_CREATEBATCH + $"/{videoData.IndexVideoId}")).ConfigureAwait(false);
                         haveIndexLink = httpGetResponse.StatusCode == System.Net.HttpStatusCode.OK;
                         completed = true;
                     }
@@ -59,7 +60,7 @@ namespace Etherna.DevconArchiveVideoParser.Services
             if (haveIndexLink)
             {
                 // Update manifest index.
-                Console.WriteLine($"Update Index: {mdFileData!.IndexVideoId}\t{hashReferenceMetadata}");
+                Console.WriteLine($"Update Index: {videoData!.IndexVideoId}\t{hashReferenceMetadata}");
                 var i = 0;
                 var completed = false;
                 while (i < MAX_RETRY &&
@@ -68,7 +69,7 @@ namespace Etherna.DevconArchiveVideoParser.Services
                     {
                         i++;
                         using var httpContent = new StringContent("{}", Encoding.UTF8, "application/json");
-                        httpResponse = await httpClient.PutAsync(new Uri(indexUrl + INDEX_API_CREATEBATCH + $"/{mdFileData!.IndexVideoId}?newHash={hashReferenceMetadata}"), httpContent).ConfigureAwait(false);
+                        httpResponse = await httpClient.PutAsync(new Uri(indexUrl + INDEX_API_CREATEBATCH + $"/{videoData!.IndexVideoId}?newHash={hashReferenceMetadata}"), httpContent).ConfigureAwait(false);
                         httpResponse.EnsureSuccessStatusCode();
                         completed = true;
                     }
@@ -76,7 +77,7 @@ namespace Etherna.DevconArchiveVideoParser.Services
                 if (!completed)
                     throw new InvalidOperationException($"Some error during update index video");
                 
-                return mdFileData.IndexVideoId!;
+                return videoData.IndexVideoId!;
             }
             else
             {
@@ -100,8 +101,8 @@ namespace Etherna.DevconArchiveVideoParser.Services
                     catch { }
                 if (!completed)
                     throw new InvalidOperationException($"Some error during create index video");
-                
-                mdFileData.SetEthernaIndex(indexVideoId);
+
+                videoData.SetEthernaIndex(indexVideoId);
 
                 return indexVideoId;
             }

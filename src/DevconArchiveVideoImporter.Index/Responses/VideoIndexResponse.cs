@@ -1,6 +1,6 @@
-﻿using Etherna.DevconArchiveVideoParser.CommonData.Models;
+﻿using Etherna.DevconArchiveVideoImporter.Index.Models;
 
-namespace Etherna.DevconArchiveVideoParser.CommonData.Responses
+namespace Etherna.DevconArchiveVideoImporter.Responses
 {
     public class VideoIndexResponse
     {

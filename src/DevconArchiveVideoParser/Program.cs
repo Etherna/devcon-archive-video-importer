@@ -1,10 +1,10 @@
 ﻿using Etherna.BeeNet;
 using Etherna.BeeNet.Clients.DebugApi;
 using Etherna.BeeNet.Clients.GatewayApi;
-using Etherna.DevconArchiveVideoParser.CommonData.Dtos;
-using Etherna.DevconArchiveVideoParser.Services;
-using Etherna.DevconArchiveVideoParser.SSO;
-using Etherna.DevconArchiveVideoParser.YoutubeDownloader.Clients;
+using Etherna.DevconArchiveVideoImporter.Index.Models;
+using Etherna.DevconArchiveVideoImporter.Json;
+using Etherna.DevconArchiveVideoImporter.Services;
+using Etherna.DevconArchiveVideoImporter.SSO;
 using IdentityModel.OidcClient;
 using System;
 using System.IO;
@@ -12,7 +12,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 
-namespace DevconArchiveVideoParser
+namespace Etherna.DevconArchiveVideoImporter
 {
     internal class Program
     {
@@ -73,7 +73,7 @@ namespace DevconArchiveVideoParser
             var tmpFolderFullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, tmpFolder);
 
             // Read from files md.
-            var mdFiles = MdVideoParserService.ToVideoDataDtos(sourceFolderPath);
+            var videos = MdVideoParserService.ToVideoDataDtos(sourceFolderPath);
 
             // Sign with SSO and create auth client.
             var authResult = await SigInSSO().ConfigureAwait(false);
@@ -114,68 +114,72 @@ namespace DevconArchiveVideoParser
             // Import each video.
             var indexParams = await indexerService.GetParamsInfoAsync().ConfigureAwait(false);
             var videoCount = 0;
-            var totalVideo = mdFiles.Count();
-            foreach (var mdFile in mdFiles)
+            var totalVideo = videos.Count();
+            foreach (var video in videos)
             {
                 try
                 {
                     Console.WriteLine("===============================");
                     Console.WriteLine($"Start processing video #{++videoCount} of #{totalVideo}");
-                    Console.WriteLine($"Title: {mdFile.Title}");
+                    Console.WriteLine($"Title: {video.Title}");
 
                     // Check last valid manifest, if exist.
-                    var manifest = await indexerService.GetLastValidManifestAsync(mdFile.IndexVideoId).ConfigureAwait(false);
+                    var manifest = await indexerService.GetLastValidManifestAsync(video.IndexVideoId).ConfigureAwait(false);
                     if (manifest is not null)
                     {
                         // Check if manifest contain the same url of current md file.
-                        var personalData = manifest.PersonalDataTyped<MetadataPersonalDataDto>();
+                        var personalData = JsonUtility.FromJson<MetadataPersonalDataDto>(manifest.PersonalData);
                         if (personalData is not null &&
-                            personalData.VideoId == mdFile.YoutubeId)
+                            personalData.VideoId == video.YoutubeId)
                         {
                             // When YoutubeId is already uploaded, check for any change in metadata.
-                            if (!manifest.CheckForMetadataInfoChanged(mdFile))
+                            if (!manifest.CheckForMetadataInfoChanged(
+                                    video.Description,
+                                    video.Title))
                             {
                                 // No change in any fields.
                                 Console.WriteLine($"Video already on etherna");
                                 continue;
                             }
                             else
-                                manifest.UpdateMetadataInfo(mdFile);
+                                manifest.UpdateMetadataInfo(
+                                    video.Description,
+                                    video.Title);
                         }
                         else
                         {
                             // Youtube video changed.
                             // TODO remove all old Indexed data.
-                            mdFile.ResetEthernaData(); // Reset all data otherwise instead of creane new index will be update.
+                            video.ResetEthernaData(); // Reset all data otherwise instead of creane new index will be update.
                             manifest = null; // Set null for restart all process like a first time.
                         }
                     }
 
                     // Data validation.
-                    if (mdFile.Title!.Length > indexParams.VideoTitleMaxLength)
+                    if (video.Title!.Length > indexParams.VideoTitleMaxLength)
                     {
                         Console.ForegroundColor = ConsoleColor.DarkRed;
                         Console.WriteLine($"Error: Title too long, max: {indexParams.VideoTitleMaxLength}\n");
                         Console.ResetColor();
                         continue;
                     }
-                    if (mdFile.Description!.Length > indexParams.VideoDescriptionMaxLength)
+                    if (video.Description!.Length > indexParams.VideoDescriptionMaxLength)
                     {
                         Console.ForegroundColor = ConsoleColor.DarkRed;
                         Console.WriteLine($"Error: Description too long, max: {indexParams.VideoDescriptionMaxLength}\n");
                         Console.ResetColor();
                         continue;
                     }
-                    Console.WriteLine($"Source Video: {mdFile.YoutubeUrl}");
+                    Console.WriteLine($"Source Video: {video.YoutubeUrl}");
 
                     int duration;
                     if (manifest is null)
                     {
                         // Download from source.
-                        var videoData = await videoDownloaderService.StartDownloadAsync(mdFile).ConfigureAwait(false);
+                        var videoData = await videoDownloaderService.StartDownloadAsync(video).ConfigureAwait(false);
 
-                        if (videoData?.VideoDataItems is null ||
-                            videoData.VideoDataItems.Count <= 0)
+                        if (videoData?.VideoDataResolutions is null ||
+                            videoData.VideoDataResolutions.Count <= 0)
                         {
                             Console.ForegroundColor = ConsoleColor.DarkRed;
                             Console.WriteLine($"Error: video for download not found\n");
@@ -187,24 +191,24 @@ namespace DevconArchiveVideoParser
                         await videoUploaderService.StartUploadAsync(videoData, pinVideo, offerVideo).ConfigureAwait(false);
 
                         // Take duration from one of downloaded videos.
-                        duration = videoData.VideoDataItems.First().Duration;
+                        duration = videoData.VideoDataResolutions.First().Duration;
                     }
                     else
                     {
                         // Change metadata info.
-                        var hashMetadataReference = await videoUploaderService.UploadMetadataAsync(manifest, mdFile, pinVideo).ConfigureAwait(false);
-                        await indexerService.IndexManifestAsync(hashMetadataReference, mdFile).ConfigureAwait(false);
+                        var hashMetadataReference = await videoUploaderService.UploadMetadataAsync(manifest, video, pinVideo).ConfigureAwait(false);
+                        await indexerService.IndexManifestAsync(hashMetadataReference, video).ConfigureAwait(false);
 
                         // Take duration from previues md file saved.
-                        duration = mdFile.Duration;
+                        duration = video.Duration;
                     }
 
                     // Save MD file with etherna values.
-                    Console.WriteLine($"Save etherna values in file {mdFile.MdFilepath}\n");
-                    var sourceMdFile = new LinkReporterService(mdFile.MdFilepath!);
+                    Console.WriteLine($"Save etherna values in file {video.MdFilepath}\n");
+                    var sourceMdFile = new LinkReporterService(video.MdFilepath!);
                     await sourceMdFile.SetEthernaValueAsync(
-                        mdFile.EthernaIndex!,
-                        mdFile.EthernaPermalink!,
+                        video.EthernaIndex!,
+                        video.EthernaPermalink!,
                         duration).ConfigureAwait(false);
 
                     // Import completed.
