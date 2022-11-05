@@ -1,5 +1,5 @@
-﻿using Etherna.DevconArchiveVideoImporter.Index.Models;
-using Etherna.DevconArchiveVideoParser.Models;
+﻿using Etherna.DevconArchiveVideoParser.Models;
+using Etherna.ServicesClient.Clients.Index;
 using System.Threading.Tasks;
 
 namespace Etherna.DevconArchiveVideoImporter.Services
@@ -12,7 +12,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             bool offerVideo);
 
         public Task<string> UploadMetadataAsync(
-            MetadataVideo metadataVideo,
+            VideoManifestDto videoManifestDto,
             VideoData videoData,
             bool swarmPin);
     }

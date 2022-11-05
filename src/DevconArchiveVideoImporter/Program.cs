@@ -5,6 +5,7 @@ using Etherna.DevconArchiveVideoImporter.Index.Models;
 using Etherna.DevconArchiveVideoImporter.Json;
 using Etherna.DevconArchiveVideoImporter.Services;
 using Etherna.DevconArchiveVideoImporter.SSO;
+using Etherna.ServicesClient;
 using IdentityModel.OidcClient;
 using System;
 using System.IO;
@@ -29,6 +30,7 @@ namespace Etherna.DevconArchiveVideoImporter
         private const int BEENODE_GATEWAYPORT = 443;
         private const GatewayApiVersion BEENODE_GATEWAYVERSION = GatewayApiVersion.v3_0_2;
         private const string BEENODE_URL = "https://gateway.etherna.io/";
+        private const string ETHERNA_CREDIT = "https://credit.etherna.io/";
         private const string ETHERNA_INDEX = "https://index.etherna.io/";
         private const string ETHERNA_GATEWAY = "https://gateway.etherna.io/";
         private const string SSO_AUTHORITY = "https://sso.etherna.io/";
@@ -92,7 +94,13 @@ namespace Etherna.DevconArchiveVideoImporter
             var httpClient = new HttpClient(authResult.RefreshTokenHandler) { Timeout = TimeSpan.FromHours(2) };
 
             // Inizialize services.
-            var indexerService = new IndexerService(httpClient, ETHERNA_INDEX);
+            var ethernaUserClients = new EthernaUserClients(
+                new Uri(ETHERNA_CREDIT),
+                new Uri(ETHERNA_GATEWAY),
+                new Uri(ETHERNA_INDEX),
+                new Uri(SSO_AUTHORITY),
+                () => httpClient);
+            var indexerService = new IndexerService(ethernaUserClients);
             var videoDownloaderService = new VideoDownloaderService(
                 new YoutubeDownloadClient(),
                 tmpFolderFullPath,
@@ -110,7 +118,6 @@ namespace Etherna.DevconArchiveVideoImporter
                 indexerService,
                 ETHERNA_GATEWAY,
                 userEthAddr);
-
             // Import each video.
             var indexParams = await indexerService.GetParamsInfoAsync().ConfigureAwait(false);
             var videoCount = 0;
@@ -124,34 +131,35 @@ namespace Etherna.DevconArchiveVideoImporter
                     Console.WriteLine($"Title: {video.Title}");
 
                     // Check last valid manifest, if exist.
-                    var manifest = await indexerService.GetLastValidManifestAsync(video.IndexVideoId).ConfigureAwait(false);
-                    if (manifest is not null)
+                    var lastValidManifest = await indexerService.GetLastValidManifestAsync(video.IndexVideoId).ConfigureAwait(false);
+                    if (lastValidManifest is not null)
                     {
                         // Check if manifest contain the same url of current md file.
-                        var personalData = JsonUtility.FromJson<MetadataPersonalDataDto>(manifest.PersonalData);
+                        var personalData = JsonUtility.FromJson<MetadataPersonalDataDto>("");//TODO add manifest.PersonalData
                         if (personalData is not null &&
                             personalData.VideoId == video.YoutubeId)
                         {
                             // When YoutubeId is already uploaded, check for any change in metadata.
-                            if (!manifest.CheckForMetadataInfoChanged(
-                                    video.Description,
-                                    video.Title))
+                            if (video.Title != lastValidManifest.Title ||
+                                video.Description != lastValidManifest.Description)
                             {
                                 // No change in any fields.
                                 Console.WriteLine($"Video already on etherna");
                                 continue;
                             }
                             else
-                                manifest.UpdateMetadataInfo(
-                                    video.Description,
-                                    video.Title);
+                            {
+                                // Edit manifest data fields.
+                                lastValidManifest.Description = video.Description ?? "";
+                                lastValidManifest.Title = video.Title ?? "";
+                            }
                         }
                         else
                         {
                             // Youtube video changed.
                             // TODO remove all old Indexed data.
                             video.ResetEthernaData(); // Reset all data otherwise instead of creane new index will be update.
-                            manifest = null; // Set null for restart all process like a first time.
+                            lastValidManifest = null; // Set null for restart all process like a first time.
                         }
                     }
 
@@ -173,7 +181,7 @@ namespace Etherna.DevconArchiveVideoImporter
                     Console.WriteLine($"Source Video: {video.YoutubeUrl}");
 
                     int duration;
-                    if (manifest is null)
+                    if (lastValidManifest is null)
                     {
                         // Download from source.
                         var videoData = await videoDownloaderService.StartDownloadAsync(video).ConfigureAwait(false);
@@ -196,7 +204,7 @@ namespace Etherna.DevconArchiveVideoImporter
                     else
                     {
                         // Change metadata info.
-                        var hashMetadataReference = await videoUploaderService.UploadMetadataAsync(manifest, video, pinVideo).ConfigureAwait(false);
+                        var hashMetadataReference = await videoUploaderService.UploadMetadataAsync(lastValidManifest, video, pinVideo).ConfigureAwait(false);
                         await indexerService.IndexManifestAsync(hashMetadataReference, video).ConfigureAwait(false);
 
                         // Take duration from previues md file saved.
