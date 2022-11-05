@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace Etherna.DevconArchiveVideoImporter.Services
 {
 
-    public class EthernaClientService
+    public class EthernaClientService : IEthernaClientService
     {
         // Fields.
         private readonly EthernaUserClients ethernaUserClients;
