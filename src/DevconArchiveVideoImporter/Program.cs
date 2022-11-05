@@ -1,7 +1,7 @@
 ﻿using Etherna.BeeNet;
 using Etherna.BeeNet.Clients.DebugApi;
 using Etherna.BeeNet.Clients.GatewayApi;
-using Etherna.DevconArchiveVideoImporter.Index.Models;
+using Etherna.DevconArchiveVideoImporter.Dtos;
 using Etherna.DevconArchiveVideoImporter.Json;
 using Etherna.DevconArchiveVideoImporter.Services;
 using Etherna.DevconArchiveVideoImporter.SSO;
@@ -29,7 +29,6 @@ namespace Etherna.DevconArchiveVideoImporter
             "-h\tPrint help\n";
         private const int BEENODE_GATEWAYPORT = 443;
         private const GatewayApiVersion BEENODE_GATEWAYVERSION = GatewayApiVersion.v3_0_2;
-        private const string BEENODE_URL = "https://gateway.etherna.io/";
         private const string ETHERNA_CREDIT = "https://credit.etherna.io/";
         private const string ETHERNA_INDEX = "https://index.etherna.io/";
         private const string ETHERNA_GATEWAY = "https://gateway.etherna.io/";
@@ -91,7 +90,7 @@ namespace Etherna.DevconArchiveVideoImporter
                 Console.WriteLine($"Missing ether address");
                 return;
             }
-            var httpClient = new HttpClient(authResult.RefreshTokenHandler) { Timeout = TimeSpan.FromHours(2) };
+            using var httpClient = new HttpClient(authResult.RefreshTokenHandler) { Timeout = TimeSpan.FromHours(2) };
 
             // Inizialize services.
             var ethernaUserClients = new EthernaUserClients(
@@ -100,26 +99,24 @@ namespace Etherna.DevconArchiveVideoImporter
                 new Uri(ETHERNA_INDEX),
                 new Uri(SSO_AUTHORITY),
                 () => httpClient);
-            var indexerService = new IndexerService(ethernaUserClients);
+            var ethernaClientService = new EthernaClientService(ethernaUserClients);
             var videoDownloaderService = new VideoDownloaderService(
                 new YoutubeDownloadClient(),
                 tmpFolderFullPath,
                 maxFilesize);
             var beeNodeClient = new BeeNodeClient(
-                    BEENODE_URL,
+                    ETHERNA_GATEWAY,
                     BEENODE_GATEWAYPORT,
                     null,
                     BEENODE_GATEWAYVERSION,
                     DebugApiVersion.v3_0_2,
                     httpClient);
             var videoUploaderService = new VideoUploaderService(
-                httpClient,
                 beeNodeClient,
-                indexerService,
-                ETHERNA_GATEWAY,
+                ethernaClientService,
                 userEthAddr);
             // Import each video.
-            var indexParams = await indexerService.GetParamsInfoAsync().ConfigureAwait(false);
+            var indexParams = await ethernaClientService.GetParamsInfoAsync().ConfigureAwait(false);
             var videoCount = 0;
             var totalVideo = videos.Count();
             foreach (var video in videos)
@@ -131,7 +128,7 @@ namespace Etherna.DevconArchiveVideoImporter
                     Console.WriteLine($"Title: {video.Title}");
 
                     // Check last valid manifest, if exist.
-                    var lastValidManifest = await indexerService.GetLastValidManifestAsync(video.IndexVideoId).ConfigureAwait(false);
+                    var lastValidManifest = await ethernaClientService.GetLastValidManifestAsync(video.IndexVideoId).ConfigureAwait(false);
                     if (lastValidManifest is not null)
                     {
                         // Check if manifest contain the same url of current md file.
@@ -205,7 +202,7 @@ namespace Etherna.DevconArchiveVideoImporter
                     {
                         // Change metadata info.
                         var hashMetadataReference = await videoUploaderService.UploadMetadataAsync(lastValidManifest, video, pinVideo).ConfigureAwait(false);
-                        await indexerService.IndexManifestAsync(hashMetadataReference, video).ConfigureAwait(false);
+                        await ethernaClientService.AddManifestToIndex(hashMetadataReference, video).ConfigureAwait(false);
 
                         // Take duration from previues md file saved.
                         duration = video.Duration;

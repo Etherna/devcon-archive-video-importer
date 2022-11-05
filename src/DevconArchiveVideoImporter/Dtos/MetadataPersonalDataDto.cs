@@ -1,4 +1,4 @@
-﻿namespace Etherna.DevconArchiveVideoImporter.Index.Models
+﻿namespace Etherna.DevconArchiveVideoImporter.Dtos
 {
     public class MetadataPersonalDataDto
     {

@@ -15,9 +15,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{
 		.github\workflows\publish-app-release.yml = .github\workflows\publish-app-release.yml
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DevconArchiveVideoImporter.Archive", "src\DevconArchiveVideoImporter.Archive\DevconArchiveVideoImporter.Archive.csproj", "{9362F00F-A22E-41F7-8FDF-6748584BCB73}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DevconArchiveVideoImporter.Index", "src\DevconArchiveVideoImporter.Index\DevconArchiveVideoImporter.Index.csproj", "{BB0E997E-B00B-4788-BB93-B1D5AD67046C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DevconArchiveVideoImporter.Archive", "src\DevconArchiveVideoImporter.Archive\DevconArchiveVideoImporter.Archive.csproj", "{9362F00F-A22E-41F7-8FDF-6748584BCB73}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,10 +31,6 @@ Global
 		{9362F00F-A22E-41F7-8FDF-6748584BCB73}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9362F00F-A22E-41F7-8FDF-6748584BCB73}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9362F00F-A22E-41F7-8FDF-6748584BCB73}.Release|Any CPU.Build.0 = Release|Any CPU
-		{BB0E997E-B00B-4788-BB93-B1D5AD67046C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{BB0E997E-B00B-4788-BB93-B1D5AD67046C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{BB0E997E-B00B-4788-BB93-B1D5AD67046C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{BB0E997E-B00B-4788-BB93-B1D5AD67046C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

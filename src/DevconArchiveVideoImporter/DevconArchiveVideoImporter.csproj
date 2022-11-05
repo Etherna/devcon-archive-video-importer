@@ -35,7 +35,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DevconArchiveVideoImporter.Archive\DevconArchiveVideoImporter.Archive.csproj" />
-    <ProjectReference Include="..\DevconArchiveVideoImporter.Index\DevconArchiveVideoImporter.Index.csproj" />
   </ItemGroup>
 
 </Project>

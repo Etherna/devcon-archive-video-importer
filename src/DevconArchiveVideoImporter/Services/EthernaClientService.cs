@@ -2,22 +2,31 @@
 using Etherna.ServicesClient;
 using Etherna.ServicesClient.Clients.Index;
 using System;
+using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace Etherna.DevconArchiveVideoImporter.Services
 {
-    public class IndexerService
+
+    public class EthernaClientService
     {
+        // Fields.
         private readonly EthernaUserClients ethernaUserClients;
+
+        // Const.
+        private const int BATCH_DEEP = 20;
+        private readonly TimeSpan BATCH_DURANTION_TIME = new(365, 0, 0, 0);
+        private const int BLOCK_TIME = 5;
         private const int MAX_RETRY = 3;
 
-        public IndexerService(EthernaUserClients ethernaUserClients)
+        // Constractor.
+        public EthernaClientService(EthernaUserClients ethernaUserClients)
         {
             this.ethernaUserClients = ethernaUserClients;
         }
 
         // Methods.
-        public async Task<string> IndexManifestAsync(
+        public async Task<string> AddManifestToIndex(
             string hashReferenceMetadata,
             VideoData videoData)
         {
@@ -91,6 +100,21 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             }
         }
 
+        public async Task<string> CreateBatchAsync()
+        {
+            var i = 0;
+            while (i < MAX_RETRY)
+                try
+                {
+                    i++;
+                    var chainState = await ethernaUserClients.GatewayClient.SystemClient.ChainstateAsync().ConfigureAwait(false);
+                    var amount = (long)BATCH_DURANTION_TIME.TotalSeconds * BLOCK_TIME / chainState.CurrentPrice;
+                    return await ethernaUserClients.GatewayClient.UsersClient.BatchesPostAsync(BATCH_DEEP, amount).ConfigureAwait(false);
+                }
+                catch { }
+            throw new InvalidOperationException($"Some error during create batch");
+        }
+
         public async Task<VideoManifestDto?> GetLastValidManifestAsync(string? videoId)
         {
             if (string.IsNullOrWhiteSpace(videoId))
@@ -121,5 +145,43 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             throw new InvalidOperationException($"Some error during get params index");
         }
 
+        public async Task<string> GetBatchIdFromReferenceAsync(string referenceId)
+        {
+            var i = 0;
+            while (i < MAX_RETRY)
+                try
+                {
+                    i++;
+                    return await ethernaUserClients.GatewayClient.SystemClient.PostageBatchRefAsync(referenceId).ConfigureAwait(false);
+                }
+                catch { }
+            throw new InvalidOperationException($"Some error during get batch id");
+        }
+
+        public async Task<bool> IsUsableBatchAsync(string batchId)
+        {
+            var i = 0;
+            while (i < MAX_RETRY)
+                try
+                {
+                    i++;
+                    return (await ethernaUserClients.GatewayClient.UsersClient.BatchesGetAsync(batchId).ConfigureAwait(false)).Usable;
+                }
+                catch { }
+            throw new InvalidOperationException($"Some error during get batch status");
+        }
+
+        public async Task OfferResourceAsync(string hash)
+        {
+            var i = 0;
+            while (i < MAX_RETRY)
+                try
+                {
+                    i++;
+                    await ethernaUserClients.GatewayClient.ResourcesClient.OffersPostAsync(hash).ConfigureAwait(false);
+                }
+                catch { }
+            throw new InvalidOperationException($"Some error during set reference offer");
+        }
     }
 }
