@@ -132,7 +132,7 @@ namespace Etherna.DevconArchiveVideoImporter
                     if (lastValidManifest is not null)
                     {
                         // Check if manifest contain the same url of current md file.
-                        var personalData = JsonUtility.FromJson<MetadataPersonalDataDto>("");//TODO add manifest.PersonalData
+                        var personalData = JsonUtility.FromJson<MetadataPersonalDataDto>(lastValidManifest.PersonalData ?? "{}");
                         if (personalData is not null &&
                             personalData.VideoId == video.YoutubeId)
                         {
@@ -154,8 +154,7 @@ namespace Etherna.DevconArchiveVideoImporter
                         else
                         {
                             // Youtube video changed.
-                            // TODO remove all old Indexed data.
-                            video.ResetEthernaData(); // Reset all data otherwise instead of creane new index will be update.
+                            video.ResetEthernaData(); // Reset all data otherwise instead of create new index will be update.
                             lastValidManifest = null; // Set null for restart all process like a first time.
                         }
                     }

@@ -10,7 +10,9 @@ using VideoLibrary;
 
 namespace Etherna.DevconArchiveVideoImporter.Services
 {
+#pragma warning disable CA1001 // Types that own disposable fields should be disposable
     public class YoutubeDownloadClient : YouTube, IDownloadClient
+#pragma warning restore CA1001 // Types that own disposable fields should be disposable
     {
         // Fields.
         private readonly HttpClient client = new();
