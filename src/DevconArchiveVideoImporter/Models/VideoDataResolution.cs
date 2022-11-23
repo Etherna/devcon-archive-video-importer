@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Etherna.DevconArchiveVideoParser.Models
+namespace Etherna.DevconArchiveVideoImporter.Models
 {
     public class VideoDataResolution
     {

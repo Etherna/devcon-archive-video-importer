@@ -2,7 +2,7 @@
 using Etherna.BeeNet.InputModels;
 using Etherna.DevconArchiveVideoImporter.Dtos;
 using Etherna.DevconArchiveVideoImporter.Json;
-using Etherna.DevconArchiveVideoParser.Models;
+using Etherna.DevconArchiveVideoImporter.Models;
 using Etherna.ServicesClient.Clients.Index;
 using SkiaSharp;
 using System;

@@ -1,6 +1,7 @@
-﻿using Etherna.DevconArchiveVideoParser.Models;
+﻿using Etherna.DevconArchiveVideoImporter.Models;
 using Etherna.ServicesClient;
 using Etherna.ServicesClient.Clients.Index;
+using Microsoft.AspNetCore.DataProtection.Repositories;
 using System;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -111,7 +112,11 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                     var amount = (long)BATCH_DURANTION_TIME.TotalSeconds * BLOCK_TIME / chainState.CurrentPrice;
                     return await ethernaUserClients.GatewayClient.UsersClient.BatchesPostAsync(BATCH_DEEP, amount).ConfigureAwait(false);
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    if (ex.Message.Contains("NEVER FOUND THIS LINE", StringComparison.InvariantCultureIgnoreCase))
+                        return "";
+                }
             throw new InvalidOperationException($"Some error during create batch");
         }
 
@@ -128,8 +133,12 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                     var videoDto = await ethernaUserClients.IndexClient.VideosClient.ManifestAsync(videoId).ConfigureAwait(false);
                     return videoDto?.LastValidManifest;
                 }
-                catch { }
-            throw new InvalidOperationException($"Some error during create index video");
+                catch (Exception ex) 
+                {
+                    if (ex.Message.Contains("Status: 404", StringComparison.InvariantCultureIgnoreCase))
+                        return null;
+                }
+            throw new InvalidOperationException($"Some error during get index video");
         }
 
         public async Task<SystemParametersDto> GetParamsInfoAsync()

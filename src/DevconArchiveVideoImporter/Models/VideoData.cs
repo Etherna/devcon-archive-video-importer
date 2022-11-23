@@ -1,26 +1,36 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Web;
 
-namespace Etherna.DevconArchiveVideoParser.CommonData.Models
+namespace Etherna.DevconArchiveVideoImporter.Models
 {
-    public class MDFileData
+    public class VideoData
     {
         // Const.
         public const string PREFIX_ETHERNA_INDEX = "https://etherna.io/embed/";
         public const string PREFIX_ETHERNA_PERMALINK = "https://etherna.io/embed/";
 
-        // Properties.
+        // Properties from file MD.
         public string Id { get; set; } = default!;
         public string? MdFilepath { get; set; }
-        public string? Description { get; set; }
+        public string Description { get; set; } = default!;
         public int Duration { get; set; }
         public int Edition { get; set; }
         public string? EthernaIndex { get; set; }
         public string? EthernaPermalink { get; set; }
-        public string? Title { get; set; }
+        public string Title { get; set; } = default!;
         public string? Type { get; set; }
         public string? YoutubeUrl { get; set; }
+
+
+        // Properties from VideoSource.
+#pragma warning disable CA2227 // Collection properties should be read only
+        public ICollection<VideoDataResolution> VideoDataResolutions { get; set; } = default!;
+#pragma warning restore CA2227 // Collection properties should be read only
+        public string DownloadedThumbnailPath { get; set; } = default!;
+
+        // Properties composed.
         public string? YoutubeId
         {
             get
@@ -72,5 +82,6 @@ namespace Etherna.DevconArchiveVideoParser.CommonData.Models
             EthernaPermalink = $"{PREFIX_ETHERNA_PERMALINK}{hashMetadataReference}";
             return EthernaPermalink;
         }
+
     }
 }
