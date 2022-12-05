@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Etherna.DevconArchiveVideoImporter.Utilities;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
@@ -7,10 +8,6 @@ namespace Etherna.DevconArchiveVideoImporter.Models
 {
     public class VideoData
     {
-        // Const.
-        public const string PREFIX_ETHERNA_INDEX = "https://etherna.io/embed/";
-        public const string PREFIX_ETHERNA_PERMALINK = "https://etherna.io/embed/";
-
         // Properties from file MD.
         public string Id { get; set; } = default!;
         public string? MdFilepath { get; set; }
@@ -48,21 +45,9 @@ namespace Etherna.DevconArchiveVideoImporter.Models
                 return uri.Segments.Last();
             }
         }
-        public string? IndexVideoId
-        {
-            get
-            {
-                return EthernaIndex?.Replace(PREFIX_ETHERNA_INDEX, "", StringComparison.InvariantCultureIgnoreCase);
-            }
-        }
+        public string? IndexVideoId => EthernaIndex?.Replace(CommonConst.PREFIX_ETHERNA_INDEX, "", StringComparison.InvariantCultureIgnoreCase);
 
-        public string? PermalinkId
-        {
-            get
-            {
-                return EthernaIndex?.Replace(PREFIX_ETHERNA_PERMALINK, "", StringComparison.InvariantCultureIgnoreCase);
-            }
-        }
+        public string? PermalinkId => EthernaIndex?.Replace(CommonConst.PREFIX_ETHERNA_PERMALINK, "", StringComparison.InvariantCultureIgnoreCase);
 
         // Methods.
         public void ResetEthernaData()
@@ -73,13 +58,13 @@ namespace Etherna.DevconArchiveVideoImporter.Models
 
         public string SetEthernaIndex(string indexVideoId)
         {
-            EthernaIndex = $"{PREFIX_ETHERNA_INDEX}{indexVideoId}";
+            EthernaIndex = $"{CommonConst.PREFIX_ETHERNA_INDEX}{indexVideoId}";
             return EthernaIndex;
         }
 
         public string SetEthernaPermalink(string hashMetadataReference)
         {
-            EthernaPermalink = $"{PREFIX_ETHERNA_PERMALINK}{hashMetadataReference}";
+            EthernaPermalink = $"{CommonConst.PREFIX_ETHERNA_PERMALINK}{hashMetadataReference}";
             return EthernaPermalink;
         }
 

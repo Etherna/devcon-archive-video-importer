@@ -11,24 +11,25 @@ using VideoLibrary;
 namespace Etherna.DevconArchiveVideoImporter.Services
 {
 #pragma warning disable CA1001 // Types that own disposable fields should be disposable
-    public class YoutubeDownloadClient : YouTube, IDownloadClient
+    public class YoutubeDownloadService : IVideoDownloadService
 #pragma warning restore CA1001 // Types that own disposable fields should be disposable
     {
-        // Fields.
-        private readonly HttpClient client = new();
-        private readonly long chunkSize = 10_485_760;
+        // Const.
+        private readonly long CHUNCK_SINZE = 10_485_760;
         private const int MAX_RETRY = 3;
 
+        // Fields.
+        private readonly HttpClient client = new();
+        private readonly YouTube youTube = new YouTube();
+        
         // Methods.
-        public async Task<List<VideoDataResolution>> DownloadAllResolutionVideoAsync(
-            VideoData videoData,
-            int? maxFilesize)
+        public async Task<List<VideoDataResolution>> GetAllResolutionInfoAsync(VideoData videoData)
         {
             if (videoData is null)
                 throw new ArgumentNullException(nameof(videoData));
             if (string.IsNullOrWhiteSpace(videoData.YoutubeUrl))
                 throw new InvalidOperationException("Invalid youtube url");
-            var videos = await GetAllVideosAsync(videoData.YoutubeUrl).ConfigureAwait(false);
+            var videos = await youTube.GetAllVideosAsync(videoData.YoutubeUrl).ConfigureAwait(false);
 
             // Take best resolution with audio.
             var videoWithAudio = videos
@@ -37,8 +38,8 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                 .ToList();
             var allResolutions = videoWithAudio
                 .Select(video => video.Resolution)
-                .Distinct()
-                .OrderByDescending(res => res);
+                .OrderByDescending(res => res)
+                .Distinct();
 
             var sourceVideoInfos = new List<VideoDataResolution>();
             foreach (var currentRes in allResolutions)
@@ -48,9 +49,6 @@ namespace Etherna.DevconArchiveVideoImporter.Services
 
                 var videoUri = new Uri(videoDownload.Uri);
                 var fileSize = await GetContentLengthAsync(videoUri).ConfigureAwait(false);
-                if (maxFilesize is not null &&
-                    fileSize > maxFilesize * 1024 * 1024)
-                    continue;
 
                 sourceVideoInfos.Add(new VideoDataResolution(
                     videoDownload.AudioBitrate,
@@ -62,7 +60,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             return sourceVideoInfos;
         }
 
-        public async Task DownloadAsync(
+        public async Task DownloadVideoAsync(
             Uri uri,
             string filePath,
             IProgress<(long totalBytesCopied, long fileSize)> progress)
@@ -72,16 +70,15 @@ namespace Etherna.DevconArchiveVideoImporter.Services
 
             var fileSize = await GetContentLengthAsync(uri).ConfigureAwait(false) ?? 0;
             if (fileSize == 0)
-            {
-                throw new InvalidOperationException("File has no any content !");
-            }
+                throw new InvalidOperationException("File has no any content");
+
             using var output = File.OpenWrite(filePath);
-            var segmentCount = (int)Math.Ceiling(1.0 * fileSize / chunkSize);
+            var segmentCount = (int)Math.Ceiling(1.0 * fileSize / CHUNCK_SINZE);
             var totalBytesCopied = 0L;
             for (var i = 0; i < segmentCount; i++)
             {
-                var from = i * chunkSize;
-                var to = (i + 1) * chunkSize - 1;
+                var from = i * CHUNCK_SINZE;
+                var to = (i + 1) * CHUNCK_SINZE - 1;
                 var request = new HttpRequestMessage(HttpMethod.Get, uri);
                 request.Headers.Range = new RangeHeaderValue(from, to);
                 using (request)
@@ -91,6 +88,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                     if (response.IsSuccessStatusCode)
                         response.EnsureSuccessStatusCode();
                     var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+
                     //File Steam
                     var buffer = new byte[81920];
                     int bytesCopied;
@@ -99,8 +97,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                         bytesCopied = await stream.ReadAsync(buffer).ConfigureAwait(false);
                         await output.WriteAsync(buffer.AsMemory(0, bytesCopied)).ConfigureAwait(false);
                         totalBytesCopied += bytesCopied;
-                        if (progress is not null)
-                            progress.Report(new (totalBytesCopied, fileSize));
+                        progress?.Report(new (totalBytesCopied, fileSize));
                     } while (bytesCopied > 0);
                 }
             }
@@ -121,7 +118,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
 
                     return filePath;
                 }
-                catch { }
+                catch { await Task.Delay(3500).ConfigureAwait(false); }
             throw new InvalidOperationException($"Some error during download of thumbnail {url}");
         }
 
@@ -139,7 +136,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                     response.EnsureSuccessStatusCode();
                     return response.Content.Headers.ContentLength;
                 }
-                catch { }
+                catch { await Task.Delay(3500).ConfigureAwait(false); }
             throw new InvalidOperationException($"Can't get the file size");
         }
     }

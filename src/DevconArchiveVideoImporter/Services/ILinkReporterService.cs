@@ -4,9 +4,8 @@ namespace Etherna.DevconArchiveVideoImporter.Services
 {
     public interface ILinkReporterService
     {
-        Task SetEthernaValueAsync(
+        Task SetEthernaFieldsAsync(
             string ethernaIndex,
-            string ethernaPermalink,
-            int duration);
+            string ethernaPermalink);
     }
 }

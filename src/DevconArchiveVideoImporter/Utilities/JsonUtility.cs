@@ -1,7 +1,7 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Etherna.DevconArchiveVideoImporter.Json
+namespace Etherna.DevconArchiveVideoImporter.Utilities
 {
     public static class JsonUtility
     {

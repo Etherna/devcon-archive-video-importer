@@ -1,17 +1,15 @@
 ﻿using Etherna.BeeNet;
 using Etherna.BeeNet.InputModels;
 using Etherna.DevconArchiveVideoImporter.Dtos;
-using Etherna.DevconArchiveVideoImporter.Json;
 using Etherna.DevconArchiveVideoImporter.Models;
+using Etherna.DevconArchiveVideoImporter.Utilities;
 using Etherna.ServicesClient.Clients.Index;
 using SkiaSharp;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
 using System.Threading.Tasks;
-using VideoLibrary;
 
 namespace Etherna.DevconArchiveVideoImporter.Services
 {
@@ -19,7 +17,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
     {
         // Fields.
         private readonly BeeNodeClient beeNodeClient;
-        private readonly EthernaClientService ethernaClientService;
+        private readonly EthernaService ethernaClientService;
         private readonly string userEthAddr;
 
 
@@ -31,7 +29,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
         // Constractor.
         public VideoUploaderService(
             BeeNodeClient beeNodeClient,
-            EthernaClientService ethernaClientService,
+            EthernaService ethernaClientService,
             string userEthAddr)
         {
             if (beeNodeClient is null)
@@ -45,7 +43,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
         }
 
         // Public methods.
-        public async Task StartUploadAsync(
+        public async Task UploadVideoAsync(
             VideoData videoData,
             bool pinVideo,
             bool offerVideo)
@@ -74,7 +72,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
 
                 // Waiting for batchId avaiable.
                 await Task.Delay((int)BATCH_CHECK_TIME.TotalMilliseconds).ConfigureAwait(false);
-                batchId = await ethernaClientService.GetBatchIdFromReferenceAsync(batchReferenceId).ConfigureAwait(false);
+                batchId = await ethernaClientService.GetBatchIdFromBatchReferenceAsync(batchReferenceId).ConfigureAwait(false);
                 timeWaited += BATCH_CHECK_TIME.TotalSeconds;
             } while (string.IsNullOrWhiteSpace(batchId));
 
@@ -93,7 +91,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
 
                 // Waiting for batch ready.
                 await Task.Delay((int)BATCH_CHECK_TIME.TotalMilliseconds).ConfigureAwait(false);
-                batchUsable = await ethernaClientService.IsUsableBatchAsync(batchId).ConfigureAwait(false);
+                batchUsable = await ethernaClientService.IsBatchUsableAsync(batchId).ConfigureAwait(false);
                 timeWaited += BATCH_CHECK_TIME.TotalSeconds;
             } while (!batchUsable);
 
@@ -137,6 +135,31 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             VideoData videoData,
             bool swarmPin)
         {
+            var metadataManifestInsertInput = new MetadataManifestInsertInput(
+                DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                userEthAddr,
+                videoManifestDto.BatchId,
+                videoData.Description,
+                videoData.Duration,
+                 $"{videoData.VideoDataResolutions.First().Resolution}",
+                 JsonUtility.ToJson(new MetadataPersonalDataDto { Mode = MetadataUploadMode.DevconImporter, VideoId = videoData.YoutubeId! }),
+                 new MetadataImageInput(
+                     videoManifestDto.Thumbnail.AspectRatio, 
+                     videoManifestDto.Thumbnail.Blurhash, 
+                     videoManifestDto.Thumbnail.Sources),
+                 videoData.Title);
+
+            return await UploadMetadataAsync(
+                metadataManifestInsertInput,
+                videoData,
+                swarmPin).ConfigureAwait(false);
+        }
+
+        public async Task<string> UploadMetadataAsync(
+            MetadataManifestInsertInput videoManifestDto,
+            VideoData videoData,
+            bool swarmPin)
+        {
             var tmpMetadata = Path.GetTempFileName();
             var hashMetadataReference = "";
             try
@@ -161,7 +184,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                             files: new List<FileParameterInput> { fileParameterInput },
                             swarmPin: swarmPin).ConfigureAwait(false);
                     }
-                    catch { }
+                    catch { await Task.Delay(3500).ConfigureAwait(false); }
                 if (string.IsNullOrWhiteSpace(hashMetadataReference))
                     throw new InvalidOperationException("Some error during upload of metadata");
 
@@ -197,7 +220,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                         files: new List<FileParameterInput> { fileParameterInput },
                         swarmPin: pinVideo).ConfigureAwait(false);
                 }
-                catch { }
+                catch { await Task.Delay(3500).ConfigureAwait(false); }
             throw new InvalidOperationException("Some error during upload of video");
         }
 
@@ -218,28 +241,22 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             using var inputStream = new SKManagedStream(input);
             using var sourceImage = SKBitmap.Decode(inputStream);
             var hash = Blurhash.SkiaSharp.Blurhasher.Encode(sourceImage, 4, 4);
-            var swarmImageRaw = new ImageInsertRequest
-            {
-                AspectRatio = sourceImage.Width / sourceImage.Height,
-                Blurhash = hash,
-                V = "1.0"
-            };
-            swarmImageRaw.Sources.Add($"{sourceImage.Width}w", thumbnailReference);
+            var swarmImageRaw = new MetadataImageInput(
+                sourceImage.Width / sourceImage.Height,
+                hash,
+                new Dictionary<string, string> { { $"{sourceImage.Width}w", thumbnailReference } });
 
-            var metadataVideo = new MetadataManifestInsertRequest
-            {
-                BatchId = batchId,
-                CreatedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-                Description = videoData.Description,
-                Duration = videoData.Duration,
-                Hash = "",
-                OwnerAddress = userEthAddr,
-                OriginalQuality = $"{videoData.VideoDataResolutions.First().Resolution}",
-                PersonalData = JsonUtility.ToJson(new MetadataPersonalDataDto { Mode = "importer", VideoId = videoData.YoutubeId! }),
-                Thumbnail = swarmImageRaw,
-                Title = videoData.Title,
-                V = "1.1",
-            };
+            var metadataVideo = new MetadataManifestInsertInput(
+                DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                userEthAddr,
+                batchId,
+                videoData.Description,
+                videoData.Duration,
+                 $"{videoData.VideoDataResolutions.First().Resolution}",
+                 JsonUtility.ToJson(new MetadataPersonalDataDto { Mode = MetadataUploadMode.DevconImporter, VideoId = videoData.YoutubeId! }),
+                 swarmImageRaw,
+                 videoData.Title);
+
             foreach (var video in videoData.VideoDataResolutions)
                 metadataVideo.Sources.Add(new SourceDto
                 {
@@ -252,8 +269,8 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             return await UploadMetadataAsync(metadataVideo, videoData, swarmPin).ConfigureAwait(false);
         }
         private async Task<string> UploadThumbnailAsync(
-        bool pinVideo,
-        VideoData videoData,
+            bool pinVideo,
+            VideoData videoData,
             string batchId)
         {
             Console.WriteLine("Uploading thumbnail in progress...");
@@ -272,7 +289,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                         files: new List<FileParameterInput> { fileThumbnailParameterInput },
                         swarmPin: pinVideo).ConfigureAwait(false);
                 }
-                catch { }
+                catch { await Task.Delay(3500).ConfigureAwait(false); }
             throw new InvalidOperationException("Some error during upload of thumbnail");
         }
     }

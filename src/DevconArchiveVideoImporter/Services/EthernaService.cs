@@ -1,27 +1,25 @@
 ﻿using Etherna.DevconArchiveVideoImporter.Models;
 using Etherna.ServicesClient;
 using Etherna.ServicesClient.Clients.Index;
-using Microsoft.AspNetCore.DataProtection.Repositories;
 using System;
-using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace Etherna.DevconArchiveVideoImporter.Services
 {
 
-    public class EthernaClientService : IEthernaClientService
+    public class EthernaService : IEthernaService
     {
-        // Fields.
-        private readonly EthernaUserClients ethernaUserClients;
-
         // Const.
         private const int BATCH_DEEP = 20;
         private readonly TimeSpan BATCH_DURANTION_TIME = new(365, 0, 0, 0);
         private const int BLOCK_TIME = 5;
         private const int MAX_RETRY = 3;
 
-        // Constractor.
-        public EthernaClientService(EthernaUserClients ethernaUserClients)
+        // Fields.
+        private readonly IEthernaUserClients ethernaUserClients;
+
+        // Constructors.
+        public EthernaService(IEthernaUserClients ethernaUserClients)
         {
             this.ethernaUserClients = ethernaUserClients;
         }
@@ -66,7 +64,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                         await ethernaUserClients.IndexClient.VideosClient.VideosPutAsync(videoData.IndexVideoId!, hashReferenceMetadata).ConfigureAwait(false);
                         completed = true;
                     }
-                    catch { }
+                    catch { await Task.Delay(3500).ConfigureAwait(false); }
                 if (!completed)
                     throw new InvalidOperationException($"Some error during update index video");
 
@@ -112,11 +110,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                     var amount = (long)BATCH_DURANTION_TIME.TotalSeconds * BLOCK_TIME / chainState.CurrentPrice;
                     return await ethernaUserClients.GatewayClient.UsersClient.BatchesPostAsync(BATCH_DEEP, amount).ConfigureAwait(false);
                 }
-                catch (Exception ex)
-                {
-                    if (ex.Message.Contains("NEVER FOUND THIS LINE", StringComparison.InvariantCultureIgnoreCase))
-                        return "";
-                }
+                catch { await Task.Delay(3500).ConfigureAwait(false); }
             throw new InvalidOperationException($"Some error during create batch");
         }
 
@@ -133,15 +127,15 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                     var videoDto = await ethernaUserClients.IndexClient.VideosClient.ManifestAsync(videoId).ConfigureAwait(false);
                     return videoDto?.LastValidManifest;
                 }
-                catch (Exception ex) 
+                catch (IndexApiException ex) when (ex.StatusCode == 404)
                 {
-                    if (ex.Message.Contains("Status: 404", StringComparison.InvariantCultureIgnoreCase))
-                        return null;
+                    return null;
                 }
+                catch { await Task.Delay(3500).ConfigureAwait(false); }
             throw new InvalidOperationException($"Some error during get index video");
         }
 
-        public async Task<SystemParametersDto> GetParamsInfoAsync()
+        public async Task<SystemParametersDto> GetInfoAsync()
         {
             var i = 0;
             while (i < MAX_RETRY)
@@ -150,11 +144,11 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                     i++;
                     return await ethernaUserClients.IndexClient.SystemClient.ParametersAsync().ConfigureAwait(false);
                 }
-                catch { }
+                catch { await Task.Delay(3500).ConfigureAwait(false); }
             throw new InvalidOperationException($"Some error during get params index");
         }
 
-        public async Task<string> GetBatchIdFromReferenceAsync(string referenceId)
+        public async Task<string> GetBatchIdFromBatchReferenceAsync(string referenceId)
         {
             var i = 0;
             while (i < MAX_RETRY)
@@ -163,11 +157,11 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                     i++;
                     return await ethernaUserClients.GatewayClient.SystemClient.PostageBatchRefAsync(referenceId).ConfigureAwait(false);
                 }
-                catch { }
+                catch { await Task.Delay(3500).ConfigureAwait(false); }
             throw new InvalidOperationException($"Some error during get batch id");
         }
 
-        public async Task<bool> IsUsableBatchAsync(string batchId)
+        public async Task<bool> IsBatchUsableAsync(string batchId)
         {
             var i = 0;
             while (i < MAX_RETRY)
@@ -176,7 +170,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                     i++;
                     return (await ethernaUserClients.GatewayClient.UsersClient.BatchesGetAsync(batchId).ConfigureAwait(false)).Usable;
                 }
-                catch { }
+                catch { await Task.Delay(3500).ConfigureAwait(false); }
             throw new InvalidOperationException($"Some error during get batch status");
         }
 
@@ -189,7 +183,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                     i++;
                     await ethernaUserClients.GatewayClient.ResourcesClient.OffersPostAsync(hash).ConfigureAwait(false);
                 }
-                catch { }
+                catch { await Task.Delay(3500).ConfigureAwait(false); }
             throw new InvalidOperationException($"Some error during set reference offer");
         }
     }

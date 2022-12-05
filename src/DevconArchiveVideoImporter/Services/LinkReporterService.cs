@@ -9,7 +9,6 @@ namespace Etherna.DevconArchiveVideoImporter.Services
     internal class LinkReporterService : ILinkReporterService
     {
         // Fields.
-        private const string DurationPrefix = "duration:";
         private const string EthernaIndexPrefix = "ethernaIndex:";
         private const string EthernaPermalinkPrefix = "ethernaPermalink:";
 
@@ -25,37 +24,31 @@ namespace Etherna.DevconArchiveVideoImporter.Services
         }
 
         // Methods.
-        public async Task SetEthernaValueAsync(
+        public async Task SetEthernaFieldsAsync(
             string ethernaIndex,
-            string ethernaPermalink,
-            int duration)
+            string ethernaPermalink)
         {
             // Reaad all line.
             var lines = File.ReadLines(mdFilePath).ToList();
 
+
+            //TODO check number o fline (min of 2 throw error)
+
             // Set ethernaIndex.
             var index = GetLineNumber(lines, EthernaIndexPrefix);
-            var ethernaIndexValue = $"{EthernaIndexPrefix} \"{ethernaIndex}\"";
+            var ethernaIndexLine = $"{EthernaIndexPrefix} \"{ethernaIndex}\"";
             if (index >= 0)
-                lines[index] = ethernaIndexValue;
+                lines[index] = ethernaIndexLine;
             else
-                lines.Insert(GetIndexOfInsertLine(lines.Count), ethernaIndex);
+                lines.Insert(GetIndexOfInsertLine(lines.Count), ethernaIndexLine);
 
             // Set ethernaPermalink.
             index = GetLineNumber(lines, EthernaPermalinkPrefix);
-            var ethernaIndexLineValue = $"{EthernaPermalinkPrefix} \"{ethernaPermalink}\"";
+            var ethernaPermalinkLine = $"{EthernaPermalinkPrefix} \"{ethernaPermalink}\"";
             if (index >= 0)
-                lines[index] = ethernaIndexLineValue;
+                lines[index] = ethernaPermalinkLine;
             else
-                lines.Insert(GetIndexOfInsertLine(lines.Count), ethernaIndexLineValue);
-
-            // Set duration.
-            index = GetLineNumber(lines, DurationPrefix);
-            var durationLineValue = $"{DurationPrefix} \"{duration}\"";
-            if (index >= 0)
-                lines[index] = durationLineValue;
-            else
-                lines.Insert(GetIndexOfInsertLine(lines.Count), durationLineValue);
+                lines.Insert(GetIndexOfInsertLine(lines.Count), ethernaPermalinkLine);
 
             // Save file.
             await File.WriteAllLinesAsync(mdFilePath, lines).ConfigureAwait(false);
@@ -78,11 +71,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
         private int GetIndexOfInsertLine(int lines)
         {
             // Last position. (Exclueded final ---)
-            if (lines > 1)
-                return lines - 2;
-            else if (lines == 1)
-                return 1;
-            return 0;
+            return lines - 2;
         }
     }
 }

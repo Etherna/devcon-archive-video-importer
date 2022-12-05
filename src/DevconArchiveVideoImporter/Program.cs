@@ -2,7 +2,7 @@
 using Etherna.BeeNet.Clients.DebugApi;
 using Etherna.BeeNet.Clients.GatewayApi;
 using Etherna.DevconArchiveVideoImporter.Dtos;
-using Etherna.DevconArchiveVideoImporter.Json;
+using Etherna.DevconArchiveVideoImporter.Utilities;
 using Etherna.DevconArchiveVideoImporter.Services;
 using Etherna.DevconArchiveVideoImporter.SSO;
 using Etherna.ServicesClient;
@@ -21,25 +21,15 @@ namespace Etherna.DevconArchiveVideoImporter
         private const string HelpText =
             "DevconArchiveVideoParser help:\n\n" +
             "-s\tSource folder path with *.md files to import\n" +
-            "-o\tOutput csv file path\n" +
-            "-m\tMax file video size (Mb)\n" +
             "-f\tFree video offer by creator\n" +
             "-p\tPin video\n" +
             "\n" +
             "-h\tPrint help\n";
-        private const int BEENODE_GATEWAYPORT = 443;
-        private const GatewayApiVersion BEENODE_GATEWAYVERSION = GatewayApiVersion.v3_0_2;
-        private const string ETHERNA_CREDIT = "https://credit.etherna.io/";
-        private const string ETHERNA_INDEX = "https://index.etherna.io/";
-        private const string ETHERNA_GATEWAY = "https://gateway.etherna.io/";
-        private const string SSO_AUTHORITY = "https://sso.etherna.io/";
-        private const string SSO_CLIENT_ID = "ethernaVideoImporterId";
 
         static async Task Main(string[] args)
         {
             // Parse arguments.
             string? sourceFolderPath = null;
-            string? maxFilesizeStr = null;
             bool offerVideo = false;
             bool pinVideo = false;
             for (int i = 0; i < args.Length; i++)
@@ -47,7 +37,6 @@ namespace Etherna.DevconArchiveVideoImporter
                 switch (args[i])
                 {
                     case "-s": sourceFolderPath = args[++i]; break;
-                    case "-m": maxFilesizeStr = args[++i]; break;
                     case "-f": offerVideo = true; break;
                     case "-p": pinVideo = true; break;
                     case "-h": Console.Write(HelpText); return;
@@ -59,13 +48,6 @@ namespace Etherna.DevconArchiveVideoImporter
             Console.WriteLine();
             Console.WriteLine("Source folder path with *.md files to import:");
             sourceFolderPath = ReadStringIfEmpty(sourceFolderPath);
-
-            int? maxFilesize = null;
-            if (!string.IsNullOrWhiteSpace(maxFilesizeStr))
-                if (!int.TryParse(maxFilesizeStr, out int convertedFileSize))
-                    Console.WriteLine("Invalid input for max filesize, will be used unlimited size");
-                else
-                    maxFilesize = convertedFileSize;
 
             // Check tmp folder.
             const string tmpFolder = "tmpData";
@@ -94,29 +76,28 @@ namespace Etherna.DevconArchiveVideoImporter
 
             // Inizialize services.
             var ethernaUserClients = new EthernaUserClients(
-                new Uri(ETHERNA_CREDIT),
-                new Uri(ETHERNA_GATEWAY),
-                new Uri(ETHERNA_INDEX),
-                new Uri(SSO_AUTHORITY),
+                new Uri(CommonConst.ETHERNA_CREDIT),
+                new Uri(CommonConst.ETHERNA_GATEWAY),
+                new Uri(CommonConst.ETHERNA_INDEX),
+                new Uri(CommonConst.SSO_AUTHORITY),
                 () => httpClient);
-            var ethernaClientService = new EthernaClientService(ethernaUserClients);
+            var ethernaClientService = new EthernaService(ethernaUserClients);
             var videoDownloaderService = new VideoDownloaderService(
-                new YoutubeDownloadClient(),
-                tmpFolderFullPath,
-                maxFilesize);
+                new YoutubeDownloadService(),
+                tmpFolderFullPath);
             var beeNodeClient = new BeeNodeClient(
-                    ETHERNA_GATEWAY,
-                    BEENODE_GATEWAYPORT,
-                    null,
-                    BEENODE_GATEWAYVERSION,
-                    DebugApiVersion.v3_0_2,
-                    httpClient);
+                CommonConst.ETHERNA_GATEWAY,
+                CommonConst.BEENODE_GATEWAYPORT,
+                null,
+                CommonConst.BEENODE_GATEWAYVERSION,
+                DebugApiVersion.v3_0_2,
+                httpClient);
             var videoUploaderService = new VideoUploaderService(
                 beeNodeClient,
                 ethernaClientService,
                 userEthAddr);
             // Import each video.
-            var indexParams = await ethernaClientService.GetParamsInfoAsync().ConfigureAwait(false);
+            var indexParams = await ethernaClientService.GetInfoAsync().ConfigureAwait(false);
             var videoCount = 0;
             var totalVideo = videos.Count();
             foreach (var video in videos)
@@ -176,7 +157,6 @@ namespace Etherna.DevconArchiveVideoImporter
                     }
                     Console.WriteLine($"Source Video: {video.YoutubeUrl}");
 
-                    int duration;
                     if (lastValidManifest is null)
                     {
                         // Download from source.
@@ -192,28 +172,21 @@ namespace Etherna.DevconArchiveVideoImporter
                         }
 
                         // Upload on bee node.
-                        await videoUploaderService.StartUploadAsync(videoData, pinVideo, offerVideo).ConfigureAwait(false);
-
-                        // Take duration from one of downloaded videos.
-                        duration = videoData.VideoDataResolutions.First().Duration;
+                        await videoUploaderService.UploadVideoAsync(videoData, pinVideo, offerVideo).ConfigureAwait(false);
                     }
                     else
                     {
                         // Change metadata info.
                         var hashMetadataReference = await videoUploaderService.UploadMetadataAsync(lastValidManifest, video, pinVideo).ConfigureAwait(false);
                         await ethernaClientService.AddManifestToIndex(hashMetadataReference, video).ConfigureAwait(false);
-
-                        // Take duration from previues md file saved.
-                        duration = video.Duration;
                     }
 
                     // Save MD file with etherna values.
                     Console.WriteLine($"Save etherna values in file {video.MdFilepath}\n");
                     var sourceMdFile = new LinkReporterService(video.MdFilepath!);
-                    await sourceMdFile.SetEthernaValueAsync(
+                    await sourceMdFile.SetEthernaFieldsAsync(
                         video.EthernaIndex!,
-                        video.EthernaPermalink!,
-                        duration).ConfigureAwait(false);
+                        video.EthernaPermalink!).ConfigureAwait(false);
 
                     // Import completed.
                     Console.ForegroundColor = ConsoleColor.DarkGreen;
@@ -255,14 +228,14 @@ namespace Etherna.DevconArchiveVideoImporter
 
             var options = new OidcClientOptions
             {
-                Authority = SSO_AUTHORITY,
-                ClientId = SSO_CLIENT_ID,
+                Authority = CommonConst.SSO_AUTHORITY,
+                ClientId = CommonConst.SSO_CLIENT_ID,
                 RedirectUri = redirectUri,
                 Scope = "openid profile offline_access ether_accounts userApi.gateway userApi.index",
                 FilterClaims = false,
 
                 Browser = browser,
-                IdentityTokenValidator = new JwtHandlerIdentityTokenValidator(),
+                //IdentityTokenValidator = new JwtHandlerIdentityTokenValidator(),
                 RefreshTokenInnerHttpHandler = new SocketsHttpHandler()
             };
 

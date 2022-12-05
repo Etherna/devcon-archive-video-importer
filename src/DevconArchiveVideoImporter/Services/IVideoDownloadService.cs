@@ -5,10 +5,10 @@ using System.Threading.Tasks;
 
 namespace Etherna.DevconArchiveVideoImporter.Services
 {
-    public interface IDownloadClient
+    public interface IVideoDownloadService
     {
-        Task DownloadAsync(Uri uri, string filePath, IProgress<(long totalBytesCopied, long fileSize)> progress);
-        Task<List<VideoDataResolution>> DownloadAllResolutionVideoAsync(VideoData videoData, int? maxFilesize);
+        Task DownloadVideoAsync(Uri uri, string filePath, IProgress<(long totalBytesCopied, long fileSize)> progress);
+        Task<List<VideoDataResolution>> GetAllResolutionInfoAsync(VideoData videoData);
         Task<string> DownloadThumbnailAsync(string videoId, string tmpFolder);
     }
 }

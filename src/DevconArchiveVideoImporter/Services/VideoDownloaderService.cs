@@ -10,19 +10,16 @@ namespace Etherna.DevconArchiveVideoImporter.Services
     internal class VideoDownloaderService : IVideoDownloaderService
     {
         // Fields.
-        private readonly IDownloadClient downloadClient;
-        private readonly int? maxFilesize;
+        private readonly IVideoDownloadService downloadClient;
         private readonly string tmpFolder;
         private const int MAX_RETRY = 3;
 
         // Constractor.
         public VideoDownloaderService(
-            IDownloadClient downloadClient,
-            string tmpFolder,
-            int? maxFilesize)
+            IVideoDownloadService downloadClient,
+            string tmpFolder)
         {
             this.downloadClient = downloadClient;
-            this.maxFilesize = maxFilesize;
             this.tmpFolder = tmpFolder;
         }
 
@@ -35,7 +32,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             try
             {
                 // Take best video resolution.
-                var videoResolutions = await downloadClient.DownloadAllResolutionVideoAsync(videoData, maxFilesize).ConfigureAwait(false);
+                var videoResolutions = await downloadClient.GetAllResolutionInfoAsync(videoData).ConfigureAwait(false);
                 if (videoResolutions is null ||
                     videoResolutions.Count == 0)
                     throw new InvalidOperationException($"Not found video");
@@ -53,7 +50,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                         try
                         {
                             i++;
-                            await downloadClient.DownloadAsync(
+                            await downloadClient.DownloadVideoAsync(
                                 videoInfo.Uri,
                                 videoInfo.DownloadedFilePath,
                                 new Progress<(long totalBytesCopied, long fileSize)>((progressStatus) =>
@@ -63,7 +60,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                                 })).ConfigureAwait(false);
                             downloaded = true;
                         }
-                        catch { }
+                        catch { await Task.Delay(3500).ConfigureAwait(false); }
                     if (!downloaded)
                         throw new InvalidOperationException($"Some error during download of video {videoInfo.Uri}");
                     Console.WriteLine("");
