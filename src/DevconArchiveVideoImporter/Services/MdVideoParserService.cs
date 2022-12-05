@@ -53,9 +53,10 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                                 videoDataInfoDto = JsonSerializer.Deserialize<VideoData>(
                                     itemConvertedToJson.ToString(),
                                     new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                                videoDataInfoDto!.Id = sourceFile!.Replace(folderRootPath, "", StringComparison.InvariantCultureIgnoreCase);
-                                videoDataInfoDto!.MdFilepath = sourceFile;
-
+                                if (videoDataInfoDto is not null)
+                                    videoDataInfoDto.SetData(
+                                        sourceFile!.Replace(folderRootPath, "", StringComparison.InvariantCultureIgnoreCase),
+                                        sourceFile);
                             }
 #pragma warning disable CA1031 // Ignore exception type
                             catch (Exception ex)
@@ -69,8 +70,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                             itemConvertedToJson = new StringBuilder();
                             if (videoDataInfoDto is not null)
                             {
-                                videoDataInfoDto.Description += string.Join(". ", descriptionExtraRows);
-                                videoDataInfoDtos.Add(videoDataInfoDto);
+                                videoDataInfoDto.AddDescription(descriptionExtraRows);
                             }
                         }
                     }

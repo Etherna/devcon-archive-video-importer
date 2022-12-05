@@ -9,16 +9,16 @@ namespace Etherna.DevconArchiveVideoImporter.Models
     public class VideoData
     {
         // Properties from file MD.
-        public string Id { get; set; } = default!;
-        public string? MdFilepath { get; set; }
-        public string Description { get; set; } = default!;
-        public int Duration { get; set; }
-        public int Edition { get; set; }
-        public string? EthernaIndex { get; set; }
-        public string? EthernaPermalink { get; set; }
-        public string Title { get; set; } = default!;
-        public string? Type { get; set; }
-        public string? YoutubeUrl { get; set; }
+        public string Id { get; protected set; } = default!;
+        public string? MdFilepath { get; protected set; }
+        public string Description { get; protected set; } = default!;
+        public int Duration { get; protected set; }
+        public int Edition { get; protected set; }
+        public string? EthernaIndex { get; protected set; }
+        public string? EthernaPermalink { get; protected set; }
+        public string Title { get; protected set; } = default!;
+        public string? Type { get; protected set; }
+        public string? YoutubeUrl { get; protected set; }
 
 
         // Properties from VideoSource.
@@ -50,6 +50,20 @@ namespace Etherna.DevconArchiveVideoImporter.Models
         public string? PermalinkId => EthernaIndex?.Replace(CommonConst.PREFIX_ETHERNA_PERMALINK, "", StringComparison.InvariantCultureIgnoreCase);
 
         // Methods.
+        public void SetData(
+            string id, 
+            string mdFilepath)
+        {
+            Id = id;
+            MdFilepath = mdFilepath;
+        }
+
+        public void AddDescription(IEnumerable<string> descriptions)
+        {
+            Description = Description ?? "";
+            Description += string.Join(". ", descriptions);
+        }
+
         public void ResetEthernaData()
         {
             EthernaIndex = null;

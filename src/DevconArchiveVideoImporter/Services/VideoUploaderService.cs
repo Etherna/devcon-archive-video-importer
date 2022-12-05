@@ -105,8 +105,8 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             foreach (var specificVideoResolution in videoData.VideoDataResolutions)
             {
                 // Upload video.
-                specificVideoResolution.UploadedVideoReference = await UploadFileVideoAsync(pinVideo, specificVideoResolution, batchId).ConfigureAwait(false);
-                await ethernaClientService.OfferResourceAsync(specificVideoResolution.UploadedVideoReference).ConfigureAwait(false);
+                specificVideoResolution.SetUploadedVideoReference(await UploadFileVideoAsync(pinVideo, specificVideoResolution, batchId).ConfigureAwait(false));
+                await ethernaClientService.OfferResourceAsync(specificVideoResolution.UploadedVideoReference!).ConfigureAwait(false);
 
                 // Remove downloaded files.
                 if (File.Exists(specificVideoResolution.DownloadedFilePath))

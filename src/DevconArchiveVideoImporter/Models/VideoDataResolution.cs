@@ -1,4 +1,5 @@
 ﻿using System;
+using VideoLibrary;
 
 namespace Etherna.DevconArchiveVideoImporter.Models
 {
@@ -18,16 +19,38 @@ namespace Etherna.DevconArchiveVideoImporter.Models
         }
 
         // Properties.
-        public int AudioBitrate { get; set; }
-        public int Bitrate { get; set; }
-        public int Duration { get; set; }
-        public string? DownloadedFileName { get; set; }
-        public string? DownloadedFilePath { get; set; }
-        public string? DownloadedThumbnailPath { get; set; }
-        public string? UploadedVideoReference { get; set; }
-        public string Name { get; set; }
-        public int Resolution { get; set; }
-        public long Size { get; set; }
-        public Uri Uri { get; set; }
+        public int AudioBitrate { get; protected set; }
+        public int Bitrate { get; protected set; }
+        public int Duration { get; protected set; }
+        public string? DownloadedFileName { get; protected set; }
+        public string? DownloadedFilePath { get; protected set; }
+        public string? DownloadedThumbnailPath { get; protected set; }
+        public string? UploadedVideoReference { get; protected set; }
+        public string Name { get; protected set; }
+        public int Resolution { get; protected set; }
+        public long Size { get; protected set; }
+        public Uri Uri { get; protected set; }
+
+        // Methods.
+        public void SetVideoInfo(
+            string filename,
+            long fileSize,
+            int duration)
+        {
+            DownloadedFileName = filename;
+            Size = fileSize;
+            Duration = duration;
+            Bitrate = (int)Math.Ceiling((double)fileSize * 8 / duration);
+        }
+
+        public void SetDownloadedFilePath(string downloadedFilePath)
+        {
+            DownloadedFilePath = downloadedFilePath;
+        }
+
+        public void SetUploadedVideoReference(string uploadedVideoReference)
+        {
+            UploadedVideoReference = uploadedVideoReference;
+        }
     }
 }

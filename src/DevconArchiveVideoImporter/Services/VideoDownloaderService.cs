@@ -41,7 +41,8 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                 foreach (var videoInfo in videoResolutions)
                 {
                     // Start download and show progress.
-                    videoInfo.DownloadedFilePath = Path.Combine(tmpFolder, videoInfo.Name);
+
+                    videoInfo.SetDownloadedFilePath(Path.Combine(tmpFolder, videoInfo.Name));
 
                     var i = 0;
                     var downloaded = false;
@@ -52,7 +53,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                             i++;
                             await downloadClient.DownloadVideoAsync(
                                 videoInfo.Uri,
-                                videoInfo.DownloadedFilePath,
+                                videoInfo.DownloadedFilePath!,
                                 new Progress<(long totalBytesCopied, long fileSize)>((progressStatus) =>
                                 {
                                     var percent = (int)(progressStatus.totalBytesCopied * 100 / progressStatus.fileSize);
@@ -67,14 +68,15 @@ namespace Etherna.DevconArchiveVideoImporter.Services
 
                     // Set video info from downloaded video.
                     var fileSize = new FileInfo(videoInfo.DownloadedFilePath!).Length;
-                    videoInfo.DownloadedFileName = videoInfo.Name;
-                    videoInfo.Size = fileSize;
-                    videoInfo.Duration = GetDuration(videoInfo.DownloadedFilePath);
+                    videoInfo.SetVideoInfo(
+                        videoInfo.Name,
+                        fileSize,
+                        GetDuration(videoInfo.DownloadedFilePath));
+
                     if (videoInfo.Duration <= 0)
                     {
                         throw new InvalidOperationException($"Invalid Duration: {videoInfo.Duration}");
                     }
-                    videoInfo.Bitrate = (int)Math.Ceiling((double)fileSize * 8 / videoInfo.Duration);
                 }
 
                 // Download Thumbnail.
