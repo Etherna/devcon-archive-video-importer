@@ -82,9 +82,7 @@ namespace Etherna.DevconArchiveVideoImporter
                 new Uri(CommonConst.SSO_AUTHORITY),
                 () => httpClient);
             var ethernaClientService = new EthernaService(ethernaUserClients);
-            var videoDownloaderService = new VideoDownloaderService(
-                new YoutubeDownloadService(),
-                tmpFolderFullPath);
+            using var videoDownloaderService = new VideoDownloaderService(tmpFolderFullPath);
             var beeNodeClient = new BeeNodeClient(
                 CommonConst.ETHERNA_GATEWAY,
                 CommonConst.BEENODE_GATEWAYPORT,
