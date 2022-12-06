@@ -114,6 +114,33 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             throw new InvalidOperationException($"Some error during create batch");
         }
 
+        public async Task DeleteIndexVideoAsync(string videoId)
+        {
+            var i = 0;
+            while (i < MAX_RETRY)
+                try
+                {
+                    i++;
+                    await ethernaUserClients.IndexClient.VideosClient.VideosDeleteAsync(videoId).ConfigureAwait(false);
+                    return;
+                }
+                catch { await Task.Delay(3500).ConfigureAwait(false); }
+            throw new InvalidOperationException($"Some error during delete video");
+        }
+
+        public async Task<VideoDtoPaginatedEnumerableDto> GetAllUserVideoAsync(string userAddress, int? page, int? take)
+        {
+            var i = 0;
+            while (i < MAX_RETRY)
+                try
+                {
+                    i++;
+                    return await ethernaUserClients.IndexClient.UsersClient.Videos2Async(userAddress).ConfigureAwait(false);
+                }
+                catch { await Task.Delay(3500).ConfigureAwait(false); }
+            throw new InvalidOperationException($"Some error during get user video");
+        }
+
         public async Task<VideoManifestDto?> GetLastValidManifestAsync(string? videoId)
         {
             if (string.IsNullOrWhiteSpace(videoId))

@@ -1,10 +1,9 @@
 ﻿using Etherna.BeeNet;
 using Etherna.BeeNet.Clients.DebugApi;
-using Etherna.BeeNet.Clients.GatewayApi;
 using Etherna.DevconArchiveVideoImporter.Dtos;
-using Etherna.DevconArchiveVideoImporter.Utilities;
 using Etherna.DevconArchiveVideoImporter.Services;
 using Etherna.DevconArchiveVideoImporter.SSO;
+using Etherna.DevconArchiveVideoImporter.Utilities;
 using Etherna.ServicesClient;
 using IdentityModel.OidcClient;
 using System;
@@ -19,7 +18,7 @@ namespace Etherna.DevconArchiveVideoImporter
     {
         // Consts.
         private const string HelpText =
-            "DevconArchiveVideoParser help:\n\n" +
+            "DevconArchiveVideoImporter help:\n\n" +
             "-s\tSource folder path with *.md files to import\n" +
             "-f\tFree video offer by creator\n" +
             "-p\tPin video\n" +
@@ -233,7 +232,6 @@ namespace Etherna.DevconArchiveVideoImporter
                 FilterClaims = false,
 
                 Browser = browser,
-                //IdentityTokenValidator = new JwtHandlerIdentityTokenValidator(),
                 RefreshTokenInnerHttpHandler = new SocketsHttpHandler()
             };
 

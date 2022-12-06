@@ -87,8 +87,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                 var downloadedThumbnailPath = await DownloadThumbnailAsync(videoData.YoutubeId!, tmpFolder).ConfigureAwait(false);
                 var originalQuality = videoResolutions.First().Resolution + "p";
 
-                videoData.DownloadedThumbnailPath = downloadedThumbnailPath;
-                videoData.VideoDataResolutions = videoResolutions;
+                videoData.SetVideoResolutions(downloadedThumbnailPath, videoResolutions);
 
                 return videoData;
             }

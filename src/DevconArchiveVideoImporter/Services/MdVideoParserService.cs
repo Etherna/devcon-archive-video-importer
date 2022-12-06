@@ -54,9 +54,12 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                                     itemConvertedToJson.ToString(),
                                     new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
                                 if (videoDataInfoDto is not null)
+                                {
                                     videoDataInfoDto.SetData(
                                         sourceFile!.Replace(folderRootPath, "", StringComparison.InvariantCultureIgnoreCase),
                                         sourceFile);
+                                    videoDataInfoDtos.Add(videoDataInfoDto);
+                                }
                             }
 #pragma warning disable CA1031 // Ignore exception type
                             catch (Exception ex)

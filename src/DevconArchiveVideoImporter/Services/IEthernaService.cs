@@ -14,6 +14,12 @@ namespace Etherna.DevconArchiveVideoImporter.Services
         Task<string> CreateBatchAsync();
 
         /// <summary>
+        /// Delete video from index
+        /// </summary>
+        /// <param name="videoId">Video id</param>
+        Task DeleteIndexVideoAsync(string videoId);
+
+        /// <summary>
         /// Get last vaid manifest
         /// </summary>
         /// <param name="videoId">Video id</param>
@@ -23,6 +29,11 @@ namespace Etherna.DevconArchiveVideoImporter.Services
         /// Get indexer info
         /// </summary>
         Task<SystemParametersDto> GetInfoAsync();
+
+        /// <summary>
+        /// Get all user video metadata
+        /// </summary>
+        Task<VideoDtoPaginatedEnumerableDto> GetAllUserVideoAsync(string userAddress, int? page, int? take);
 
         /// <summary>
         /// Get batch id from reference
