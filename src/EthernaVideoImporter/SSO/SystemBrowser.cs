@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Etherna.DevconArchiveVideoImporter.SSO
+namespace Etherna.EthernaVideoImporter.SSO
 {
     public class SystemBrowser : IBrowser
     {
@@ -181,6 +181,6 @@ namespace Etherna.DevconArchiveVideoImporter.SSO
 
             return _source.Task;
         }
-        
+
     }
 }

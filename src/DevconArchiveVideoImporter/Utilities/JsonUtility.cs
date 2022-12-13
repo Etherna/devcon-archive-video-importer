@@ -22,7 +22,7 @@ namespace Etherna.DevconArchiveVideoImporter.Utilities
             return JsonSerializer.Serialize(objectToSerialize, serializeOptions);
         }
 
-        public static T? FromJson<T>(this string json)
+        public static T? FromJson<T>(this string? json)
         {
             if (string.IsNullOrWhiteSpace(json))
                 return default;

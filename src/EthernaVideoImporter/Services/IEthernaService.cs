@@ -1,7 +1,8 @@
 ﻿using Etherna.ServicesClient.Clients.Index;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace Etherna.DevconArchiveVideoImporter.Services
+namespace Etherna.EthernaVideoImporter.Services
 {
     /// <summary>
     /// Etherna services
@@ -33,7 +34,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
         /// <summary>
         /// Get all user video metadata
         /// </summary>
-        Task<VideoDtoPaginatedEnumerableDto> GetAllUserVideoAsync(string userAddress, int? page, int? take);
+        Task<IEnumerable<VideoDto>> GetAllUserVideoAsync(string userAddress);
 
         /// <summary>
         /// Get batch id from reference

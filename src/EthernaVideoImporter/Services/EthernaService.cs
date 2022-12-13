@@ -1,12 +1,12 @@
-﻿using Etherna.DevconArchiveVideoImporter.Models;
+﻿using Etherna.EthernaVideoImporter.Models;
 using Etherna.ServicesClient;
 using Etherna.ServicesClient.Clients.Index;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace Etherna.DevconArchiveVideoImporter.Services
+namespace Etherna.EthernaVideoImporter.Services
 {
-
     public class EthernaService : IEthernaService
     {
         // Const.
@@ -128,16 +128,29 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             throw new InvalidOperationException($"Some error during delete video");
         }
 
-        public async Task<VideoDtoPaginatedEnumerableDto> GetAllUserVideoAsync(string userAddress, int? page, int? take)
+        public async Task<IEnumerable<VideoDto>> GetAllUserVideoAsync(string userAddress)
         {
+            var elements = new List<VideoDto>();
             var i = 0;
+            var currentPage = 0;
+            const int MaxForPage = 100;
             while (i < MAX_RETRY)
                 try
                 {
                     i++;
-                    return await ethernaUserClients.IndexClient.UsersClient.Videos2Async(userAddress).ConfigureAwait(false);
+                    var result = await ethernaUserClients.IndexClient.UsersClient.Videos2Async(userAddress, currentPage, MaxForPage).ConfigureAwait(false);
+                    currentPage++;
+
+                    elements.AddRange(result.Elements);
+                    if ((MaxForPage * currentPage) >= result.TotalElements)
+                        return elements;
+                    i = 0;
                 }
-                catch { await Task.Delay(3500).ConfigureAwait(false); }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                    await Task.Delay(3500).ConfigureAwait(false);
+                }
             throw new InvalidOperationException($"Some error during get user video");
         }
 

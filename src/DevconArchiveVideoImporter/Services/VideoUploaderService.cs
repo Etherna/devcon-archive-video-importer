@@ -1,8 +1,9 @@
 ﻿using Etherna.BeeNet;
 using Etherna.BeeNet.InputModels;
 using Etherna.DevconArchiveVideoImporter.Dtos;
-using Etherna.DevconArchiveVideoImporter.Models;
 using Etherna.DevconArchiveVideoImporter.Utilities;
+using Etherna.EthernaVideoImporter.Models;
+using Etherna.EthernaVideoImporter.Services;
 using Etherna.ServicesClient.Clients.Index;
 using SkiaSharp;
 using System;
