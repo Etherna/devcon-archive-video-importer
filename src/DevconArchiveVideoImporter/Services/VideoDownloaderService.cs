@@ -19,7 +19,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
         // Fields.
         private readonly string tmpFolder;
         private readonly HttpClient client = new();
-        private readonly YouTube youTubeClient = new YouTube();
+        private readonly YouTube youTubeClient = new();
 
         // Constractor.
         public VideoDownloaderService(string tmpFolder)
