@@ -1,9 +1,8 @@
 ﻿using Etherna.BeeNet;
 using Etherna.BeeNet.InputModels;
 using Etherna.DevconArchiveVideoImporter.Dtos;
+using Etherna.DevconArchiveVideoImporter.Models;
 using Etherna.DevconArchiveVideoImporter.Utilities;
-using Etherna.EthernaVideoImporter.Models;
-using Etherna.EthernaVideoImporter.Services;
 using Etherna.ServicesClient.Clients.Index;
 using SkiaSharp;
 using System;
@@ -18,7 +17,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
     {
         // Fields.
         private readonly BeeNodeClient beeNodeClient;
-        private readonly EthernaService ethernaClientService;
+        private readonly EthernaUserClientsAdapter ethernaClientService;
         private readonly string userEthAddr;
 
 
@@ -30,7 +29,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
         // Constractor.
         public VideoUploaderService(
             BeeNodeClient beeNodeClient,
-            EthernaService ethernaClientService,
+            EthernaUserClientsAdapter ethernaClientService,
             string userEthAddr)
         {
             if (beeNodeClient is null)
@@ -55,10 +54,12 @@ namespace Etherna.DevconArchiveVideoImporter.Services
 
             // Create new batch.
             Console.WriteLine("Create batch...");
+
             var batchReferenceId = await ethernaClientService.CreateBatchAsync().ConfigureAwait(false);
 
             // Check and wait until created batchId is avaiable.
             Console.WriteLine("Waiting for batch ready...");
+
             double timeWaited = 0;
             string batchId;
             do
@@ -125,7 +126,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
 
             // Sync Index.
             Console.WriteLine("Video indexing in progress...");
-            await ethernaClientService.AddManifestToIndex(
+            await ethernaClientService.UpsertManifestToIndex(
                 hashMetadataReference,
                 videoData)
                 .ConfigureAwait(false);

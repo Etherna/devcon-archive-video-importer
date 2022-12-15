@@ -1,13 +1,16 @@
 ﻿using Etherna.ServicesClient.Clients.Index;
+using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
-namespace Etherna.EthernaVideoImporter.Services
+namespace Etherna.DevconArchiveVideoImporter.Services
 {
     /// <summary>
     /// Etherna services
     /// </summary>
-    public interface IEthernaService
+    public interface IEthernaUserClientsAdapter
     {
         /// <summary>
         /// Create batch
@@ -29,7 +32,7 @@ namespace Etherna.EthernaVideoImporter.Services
         /// <summary>
         /// Get indexer info
         /// </summary>
-        Task<SystemParametersDto> GetInfoAsync();
+        Task<SystemParametersDto> GetSystemParametersAsync();
 
         /// <summary>
         /// Get all user video metadata

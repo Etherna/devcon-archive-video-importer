@@ -1,4 +1,4 @@
-﻿using Etherna.EthernaVideoImporter.Models;
+﻿using Etherna.DevconArchiveVideoImporter.Models;
 using System.Threading.Tasks;
 
 namespace Etherna.DevconArchiveVideoImporter.Services

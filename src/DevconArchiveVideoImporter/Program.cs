@@ -2,10 +2,8 @@
 using Etherna.BeeNet.Clients.DebugApi;
 using Etherna.DevconArchiveVideoImporter.Dtos;
 using Etherna.DevconArchiveVideoImporter.Services;
+using Etherna.DevconArchiveVideoImporter.SSO;
 using Etherna.DevconArchiveVideoImporter.Utilities;
-using Etherna.EthernaVideoImporter.Services;
-using Etherna.EthernaVideoImporter.SSO;
-using Etherna.EthernaVideoImporter.Utilities;
 using Etherna.ServicesClient;
 using IdentityModel.OidcClient;
 using System;
@@ -21,6 +19,7 @@ namespace Etherna.DevconArchiveVideoImporter
         // Consts.
         private const string HelpText =
             "DevconArchiveVideoImporter help:\n\n" +
+            "-c\tClean index video\n" +
             "-s\tSource folder path with *.md files to import\n" +
             "-f\tFree video offer by creator\n" +
             "-p\tPin video\n" +
@@ -35,6 +34,7 @@ namespace Etherna.DevconArchiveVideoImporter
             bool offerVideo = false;
             bool pinVideo = false;
             bool deleteVideo = false;
+            bool cleanIndex = false;
             for (int i = 0; i < args.Length; i++)
             {
                 switch (args[i])
@@ -43,6 +43,7 @@ namespace Etherna.DevconArchiveVideoImporter
                     case "-f": offerVideo = true; break;
                     case "-p": pinVideo = true; break;
                     case "-d": deleteVideo = true; break;
+                    case "-c": cleanIndex = true; break;
                     case "-h": Console.Write(HelpText); return;
                     default: throw new ArgumentException(args[i] + " is not a valid argument");
                 }
@@ -60,7 +61,7 @@ namespace Etherna.DevconArchiveVideoImporter
             var tmpFolderFullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, tmpFolder);
 
             // Read from files md.
-            var repositoryVideos = MdVideoParserService.ToVideoDataDtos(sourceFolderPath);
+            var mdVideos = MdVideoParserService.ToVideoDataDtos(sourceFolderPath);
 
             // Sign with SSO and create auth client.
             var authResult = await SigInSSO().ConfigureAwait(false);
@@ -85,13 +86,13 @@ namespace Etherna.DevconArchiveVideoImporter
                 new Uri(CommonConst.ETHERNA_INDEX),
                 new Uri(CommonConst.SSO_AUTHORITY),
                 () => httpClient);
-            var ethernaClientService = new EthernaService(ethernaUserClients);
+            var ethernaClientService = new EthernaUserClientsAdapter(ethernaUserClients);
             using var videoDownloaderService = new VideoDownloaderService(tmpFolderFullPath);
             var beeNodeClient = new BeeNodeClient(
                 CommonConst.ETHERNA_GATEWAY,
-                GenericConst.BEENODE_GATEWAYPORT,
+                CommonConst.BEENODE_GATEWAYPORT,
                 null,
-                GenericConst.BEENODE_GATEWAYVERSION,
+                CommonConst.BEENODE_GATEWAYVERSION,
                 DebugApiVersion.v3_0_2,
                 httpClient);
             var videoUploaderService = new VideoUploaderService(
@@ -99,10 +100,10 @@ namespace Etherna.DevconArchiveVideoImporter
                 ethernaClientService,
                 userEthAddr);
             // Import each video.
-            var indexParams = await ethernaClientService.GetInfoAsync().ConfigureAwait(false);
+            var indexParams = await ethernaClientService.GetSystemParametersAsync().ConfigureAwait(false);
             var videoCount = 0;
-            var totalVideo = repositoryVideos.Count();
-            foreach (var video in repositoryVideos)
+            var totalVideo = mdVideos.Count();
+            foreach (var video in mdVideos)
             {
                 try
                 {
@@ -180,7 +181,7 @@ namespace Etherna.DevconArchiveVideoImporter
                     {
                         // Change metadata info.
                         var hashMetadataReference = await videoUploaderService.UploadMetadataAsync(lastValidManifest, video, pinVideo).ConfigureAwait(false);
-                        await ethernaClientService.AddManifestToIndex(hashMetadataReference, video).ConfigureAwait(false);
+                        await ethernaClientService.UpsertManifestToIndex(hashMetadataReference, video).ConfigureAwait(false);
                     }
 
                     // Save MD file with etherna values.
@@ -204,7 +205,7 @@ namespace Etherna.DevconArchiveVideoImporter
             }
 
             // Delete old video.
-            if (deleteVideo) 
+            if (deleteVideo)
             {
                 // Get video indexed
                 var importedVideos = await ethernaClientService.GetAllUserVideoAsync(userEthAddr).ConfigureAwait(false);
@@ -213,8 +214,8 @@ namespace Etherna.DevconArchiveVideoImporter
                     .ToList();
 
                 // Get video indexed but not in repository files *.md
-                var removeIds = videoIds.Except(repositoryVideos.Select(repVideo => repVideo.YoutubeId).ToList());
-                foreach (var videoId in removeIds)
+                var removableIds = videoIds.Except(mdVideos.Select(repVideo => repVideo.YoutubeId).ToList());
+                foreach (var videoId in removableIds)
                 {
                     try
                     {
@@ -223,6 +224,7 @@ namespace Etherna.DevconArchiveVideoImporter
                             .First();
 
                         await ethernaClientService.DeleteIndexVideoAsync(itemToRemove.Id).ConfigureAwait(false);
+
                         Console.ForegroundColor = ConsoleColor.DarkGreen;
                         Console.WriteLine($"Video {itemToRemove.Id} removed");
                         Console.ResetColor();
@@ -231,6 +233,32 @@ namespace Etherna.DevconArchiveVideoImporter
                     {
                         Console.ForegroundColor = ConsoleColor.DarkRed;
                         Console.WriteLine($"Error:{ex.Message} \n Video unable to remove video {videoId}\n");
+                        Console.ResetColor();
+                    }
+                }
+            }
+
+            // User video.
+            if (cleanIndex)
+            {
+                var videos = await ethernaClientService.GetAllUserVideoAsync(userEthAddr).ConfigureAwait(false);
+                foreach (var video in videos)
+                {
+                    if (video.LastValidManifest is not null &&
+                        !string.IsNullOrWhiteSpace(video.LastValidManifest.PersonalData))
+                        continue;
+
+                    try
+                    {
+                        await ethernaClientService.DeleteIndexVideoAsync(video.Id).ConfigureAwait(false);
+                        Console.ForegroundColor = ConsoleColor.DarkGreen;
+                        Console.WriteLine($"Video {video.Id} removed");
+                        Console.ResetColor();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.ForegroundColor = ConsoleColor.DarkRed;
+                        Console.WriteLine($"Error:{ex.Message} \n Video unable to remove video {video.Id}\n");
                         Console.ResetColor();
                     }
                 }

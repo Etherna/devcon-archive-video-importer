@@ -1,4 +1,4 @@
-﻿using Etherna.EthernaVideoImporter.Models;
+﻿using Etherna.DevconArchiveVideoImporter.Models;
 using MetadataExtractor;
 using System;
 using System.Collections.Generic;
