@@ -51,7 +51,7 @@ namespace Etherna.DevconArchiveVideoImporter.Models
         // Methods.
         public void AddDescription(IEnumerable<string> descriptions)
         {
-            Description = Description ?? "";
+            Description ??= "";
             Description += string.Join(". ", descriptions);
         }
 

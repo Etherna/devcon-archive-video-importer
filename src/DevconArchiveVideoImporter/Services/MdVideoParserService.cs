@@ -61,9 +61,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                                     videoDataInfoDtos.Add(videoDataInfoDto);
                                 }
                             }
-#pragma warning disable CA1031 // Ignore exception type
                             catch (Exception ex)
-#pragma warning restore CA1031
                             {
                                 Console.WriteLine($"{ex.Message} \n Unable to parse file: {sourceFile}");
                             }
@@ -71,10 +69,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                             markerLine = 0;
                             keyFound = 0;
                             itemConvertedToJson = new StringBuilder();
-                            if (videoDataInfoDto is not null)
-                            {
-                                videoDataInfoDto.AddDescription(descriptionExtraRows);
-                            }
+                            videoDataInfoDto?.AddDescription(descriptionExtraRows);
                         }
                     }
                     else
