@@ -19,11 +19,11 @@ namespace Etherna.DevconArchiveVideoImporter
         // Consts.
         private const string HelpText =
             "DevconArchiveVideoImporter help:\n\n" +
-            "-c\tClean index video\n" +
             "-s\tSource folder path with *.md files to import\n" +
             "-f\tFree video offer by creator\n" +
             "-p\tPin video\n" +
-            "-d\tDelete old video\n" +
+            "-d\tDelete old videos that are no longer in the .MD files\n" +
+            "-c\tDelete all index video with no valid manifest or old PersonalData\n" +
             "\n" +
             "-h\tPrint help\n";
 
