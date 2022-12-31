@@ -348,3 +348,6 @@ MigrationBackup/
 
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
+/src/DevconArchiveVideoImporter/FFmpeg/ffmpeg.linux-64
+/src/DevconArchiveVideoImporter/FFmpeg/ffmpeg.osx-64
+/src/DevconArchiveVideoImporter/FFmpeg/ffmpeg.windows-64.exe
