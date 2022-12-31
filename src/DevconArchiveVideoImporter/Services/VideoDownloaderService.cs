@@ -1,25 +1,27 @@
 ﻿using Etherna.DevconArchiveVideoImporter.Models;
-using MetadataExtractor;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading.Tasks;
-using VideoLibrary;
+using YoutubeExplode;
+using YoutubeExplode.Converter;
+using YoutubeExplode.Videos.Streams;
 
 namespace Etherna.DevconArchiveVideoImporter.Services
 {
     internal class VideoDownloaderService : IVideoDownloaderService, IDisposable
     {
         // Const.
-        private readonly long CHUNCK_SINZE = 10_485_760;
         private const int MAX_RETRY = 3;
 
         // Fields.
         private readonly string tmpFolder;
         private readonly HttpClient client = new();
-        private readonly YouTube youTubeClient = new();
+        private readonly YoutubeClient youTubeClient = new();
 
         // Constractor.
         public VideoDownloaderService(string tmpFolder)
@@ -36,52 +38,9 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             try
             {
                 // Take best video resolution.
-                var videoResolutions = await GetAllResolutionInfoAsync(videoData).ConfigureAwait(false);
-                if (videoResolutions is null ||
-                    videoResolutions.Count == 0)
+                var videoResolutions = await DownloadAllResolutionAsync(videoData).ConfigureAwait(false);
+                if (!videoResolutions.Any())
                     throw new InvalidOperationException($"Not found video");
-
-                // Download each video reoslution.
-                foreach (var videoInfo in videoResolutions)
-                {
-                    // Start download and show progress.
-
-                    videoInfo.SetDownloadedFilePath(Path.Combine(tmpFolder, videoInfo.Name));
-
-                    var i = 0;
-                    var downloaded = false;
-                    while (i < MAX_RETRY &&
-                            !downloaded)
-                        try
-                        {
-                            i++;
-                            await DownloadVideoAsync(
-                                videoInfo.Uri,
-                                videoInfo.DownloadedFilePath!,
-                                new Progress<(long totalBytesCopied, long fileSize)>((progressStatus) =>
-                                {
-                                    var percent = (int)(progressStatus.totalBytesCopied * 100 / progressStatus.fileSize);
-                                    Console.Write($"Downloading resolution {videoInfo.Resolution}.. ( % {percent} ) {progressStatus.totalBytesCopied / (1024 * 1024)} / {progressStatus.fileSize / (1024 * 1024)} MB\r");
-                                })).ConfigureAwait(false);
-                            downloaded = true;
-                        }
-                        catch { await Task.Delay(3500).ConfigureAwait(false); }
-                    if (!downloaded)
-                        throw new InvalidOperationException($"Some error during download of video {videoInfo.Uri}");
-                    Console.WriteLine("");
-
-                    // Set video info from downloaded video.
-                    var fileSize = new FileInfo(videoInfo.DownloadedFilePath!).Length;
-                    videoInfo.SetVideoInfo(
-                        videoInfo.Name,
-                        fileSize,
-                        GetDuration(videoInfo.DownloadedFilePath));
-
-                    if (videoInfo.Duration <= 0)
-                    {
-                        throw new InvalidOperationException($"Invalid Duration: {videoInfo.Duration}");
-                    }
-                }
 
                 // Download Thumbnail.
                 var downloadedThumbnailPath = await DownloadThumbnailAsync(videoData.YoutubeId!, tmpFolder).ConfigureAwait(false);
@@ -103,84 +62,155 @@ namespace Etherna.DevconArchiveVideoImporter.Services
         }
 
         // Private Methods.
-        private async Task<List<VideoDataResolution>> GetAllResolutionInfoAsync(VideoData videoData)
+        private async Task<List<VideoDataResolution>> DownloadAllResolutionAsync(VideoData videoData)
         {
             if (videoData is null)
                 throw new ArgumentNullException(nameof(videoData));
             if (string.IsNullOrWhiteSpace(videoData.YoutubeUrl))
                 throw new InvalidOperationException("Invalid youtube url");
-            var videos = await youTubeClient.GetAllVideosAsync(videoData.YoutubeUrl).ConfigureAwait(false);
 
-            // Take best resolution with audio.
-            var videoWithAudio = videos
-                .Where(video => video.AudioBitrate != -1 &&
-                                video.Resolution > 0)
-                .ToList();
-            var allResolutions = videoWithAudio
-                .Select(video => video.Resolution)
-                .OrderByDescending(res => res)
-                .Distinct();
+            // Get manifest data
+            var videoManifest = await youTubeClient.Videos.GetAsync(videoData.YoutubeUrl).ConfigureAwait(false);
+            var streamManifest = await youTubeClient.Videos.Streams.GetManifestAsync(videoData.YoutubeUrl).ConfigureAwait(false);
+            var streamInfos = streamManifest.GetMuxedStreams();
 
+            // Get filename from video title
+            var videoTitleBuilder = new StringBuilder(videoManifest.Title);
+            foreach (char c in Path.GetInvalidFileNameChars())
+                videoTitleBuilder = videoTitleBuilder.Replace(c, '_');
+            var videoTitle = videoTitleBuilder.ToString();
+
+            var resolutionVideoQuality = new List<string>();
             var sourceVideoInfos = new List<VideoDataResolution>();
+            // Take muxed streams.
+            var allResolutions = streamInfos
+                .OrderBy(res => res.VideoResolution.Area)
+                .Distinct();
             foreach (var currentRes in allResolutions)
             {
-                var videoDownload = videoWithAudio
-                .First(video => video.Resolution == currentRes);
+                resolutionVideoQuality.Add(currentRes.VideoQuality.Label);
 
-                var videoUri = new Uri(videoDownload.Uri);
-                var fileSize = await GetContentLengthAsync(videoUri).ConfigureAwait(false);
+                var videoDataResolution = await DownloadVideoAsync(
+                    currentRes,
+                    videoTitle,
+                    videoManifest.Duration ?? TimeSpan.Zero).ConfigureAwait(false);
+                sourceVideoInfos.Add(videoDataResolution);
+            }
 
-                sourceVideoInfos.Add(new VideoDataResolution(
-                    videoDownload.AudioBitrate,
-                    $"{videoDownload.Resolution}_{videoDownload.FullName}",
-                    videoDownload.Resolution,
-                    videoUri));
+            if (ExistFFmpeg())
+            {
+                // Take highest quality MP4 video-only stream and highest bitrate audio-only stream
+                var streamInfo = streamManifest
+                    .GetVideoOnlyStreams()
+                    .Where(stream => stream.Container == Container.Mp4)
+                    .OrderBy(stream => stream.VideoResolution.Area);
+                var bestStreamAudioInfo = streamManifest.GetAudioOnlyStreams().GetWithHighestBitrate();
+                foreach (var currentRes in streamInfo)
+                {
+                    if (resolutionVideoQuality.Contains(currentRes.VideoQuality.Label) ||
+                        bestStreamAudioInfo == null)
+                        continue;
+
+                    resolutionVideoQuality.Add(currentRes.VideoQuality.Label);
+
+                    var videoDataResolution = await DownloadVideoAsync(
+                        currentRes,
+                        bestStreamAudioInfo,
+                        videoTitle,
+                        videoManifest.Duration ?? TimeSpan.Zero).ConfigureAwait(false);
+                    sourceVideoInfos.Add(videoDataResolution);
+                }
             }
 
             return sourceVideoInfos;
         }
-
-        public async Task DownloadVideoAsync(
-            Uri uri,
-            string filePath,
-            IProgress<(long totalBytesCopied, long fileSize)> progress)
+        private async Task<VideoDataResolution> DownloadVideoAsync(
+            VideoOnlyStreamInfo videoOnlyStreamInfo,
+            IStreamInfo audioOnlyStreamInfo,
+            string videoTitle,
+            TimeSpan duration)
         {
-            if (uri is null)
-                throw new ArgumentNullException(nameof(uri));
+            var videoName = $"{videoTitle}_{videoOnlyStreamInfo.VideoResolution}";
+            var videoDataResolution = new VideoDataResolution(
+                videoOnlyStreamInfo.Bitrate.BitsPerSecond,
+                Path.Combine(tmpFolder, $"{videoName}.muxed.mp4"),
+                videoName,
+                videoOnlyStreamInfo.VideoQuality.Label);
 
-            var fileSize = await GetContentLengthAsync(uri).ConfigureAwait(false) ?? 0;
-            if (fileSize == 0)
-                throw new InvalidOperationException("File has no any content");
-
-            using var output = File.OpenWrite(filePath);
-            var segmentCount = (int)Math.Ceiling(1.0 * fileSize / CHUNCK_SINZE);
-            var totalBytesCopied = 0L;
-            for (var i = 0; i < segmentCount; i++)
-            {
-                var from = i * CHUNCK_SINZE;
-                var to = (i + 1) * CHUNCK_SINZE - 1;
-                var request = new HttpRequestMessage(HttpMethod.Get, uri);
-                request.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(from, to);
-                using (request)
+            var i = 0;
+            var downloaded = false;
+            while (i < MAX_RETRY &&
+                    !downloaded)
+                try
                 {
-                    // Download Stream
-                    var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
-                    if (response.IsSuccessStatusCode)
-                        response.EnsureSuccessStatusCode();
-                    var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+                    i++;
+                    var streamInfos = new IStreamInfo[] { audioOnlyStreamInfo, videoOnlyStreamInfo };
 
-                    //File Steam
-                    var buffer = new byte[81920];
-                    int bytesCopied;
-                    do
-                    {
-                        bytesCopied = await stream.ReadAsync(buffer).ConfigureAwait(false);
-                        await output.WriteAsync(buffer.AsMemory(0, bytesCopied)).ConfigureAwait(false);
-                        totalBytesCopied += bytesCopied;
-                        progress?.Report(new(totalBytesCopied, fileSize));
-                    } while (bytesCopied > 0);
+                    // Download and process them into one file
+                    await youTubeClient.Videos.DownloadAsync(
+                        streamInfos,
+                        new ConversionRequestBuilder(videoDataResolution.DownloadedFilePath).SetFFmpegPath(GetFFmpegPath()).Build(),
+                        new Progress<double>((progressStatus) =>
+                        {
+                            Console.Write($"Downloading resolution {videoDataResolution.Resolution} ({(progressStatus * 100):N0}%) {videoOnlyStreamInfo.Size.MegaBytes:N2} MB\r");
+                        })).ConfigureAwait(false);
+
+                    downloaded = true;
                 }
-            }
+                catch { await Task.Delay(3500).ConfigureAwait(false); }
+            if (!downloaded)
+                throw new InvalidOperationException($"Some error during download of video {videoOnlyStreamInfo.Url}");
+            Console.WriteLine("");
+
+            videoDataResolution.SetVideoInfo(
+                videoName,
+                videoOnlyStreamInfo.Size.Bytes,
+                (int)duration.TotalSeconds);
+
+            return videoDataResolution;
+        }
+
+        private async Task<VideoDataResolution> DownloadVideoAsync(
+            MuxedStreamInfo muxedStreamInfo,
+            string videoTitle,
+            TimeSpan duration)
+        {
+            var videoName = $"{videoTitle}_{muxedStreamInfo.VideoResolution}";
+            var videoFilepath = Path.Combine(tmpFolder, $"{videoName}.{muxedStreamInfo.Container}");
+            var videoDataResolution = new VideoDataResolution(
+                muxedStreamInfo.Bitrate.BitsPerSecond,
+                videoFilepath,
+                videoName,
+                muxedStreamInfo.VideoQuality.Label);
+
+            var i = 0;
+            var downloaded = false;
+            while (i < MAX_RETRY &&
+                    !downloaded)
+                try
+                {
+                    i++;
+                    await youTubeClient.Videos.Streams.DownloadAsync(
+                        muxedStreamInfo,
+                        videoDataResolution.DownloadedFilePath,
+                        new Progress<double>((progressStatus) =>
+                        {
+                            Console.Write($"Downloading resolution {videoDataResolution.Resolution} ({(progressStatus * 100):N0}%) {muxedStreamInfo.Size.MegaBytes:N2} MB\r");
+                        })).ConfigureAwait(false);
+
+                    downloaded = true;
+                }
+                catch { await Task.Delay(3500).ConfigureAwait(false); }
+            if (!downloaded)
+                throw new InvalidOperationException($"Some error during download of video {muxedStreamInfo.Url}");
+            Console.WriteLine("");
+
+            videoDataResolution.SetVideoInfo(
+                videoName,
+                muxedStreamInfo.Size.Bytes,
+                (int)duration.TotalSeconds);
+
+            return videoDataResolution;
         }
 
         private async Task<string> DownloadThumbnailAsync(string videoId, string tmpFolder)
@@ -201,51 +231,19 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                 catch { await Task.Delay(3500).ConfigureAwait(false); }
             throw new InvalidOperationException($"Some error during download of thumbnail {url}");
         }
+        private static bool ExistFFmpeg() =>
+            File.Exists(GetFFmpegPath());
 
-        private static int GetDuration(string? pathToVideoFile)
+        private static string GetFFmpegPath()
         {
-            if (string.IsNullOrWhiteSpace(pathToVideoFile))
-                return 0;
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                return "FFmpeg/ffmpeg.windows-64.exe";
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                return "FFmpeg/ffmpeg.linux-64";
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                return "FFmpeg/ffmpeg.osx-64";
 
-            using var stream = File.OpenRead(pathToVideoFile);
-            var directories = ImageMetadataReader.ReadMetadata(stream);
-            foreach (var itemDir in directories)
-            {
-                if (itemDir.Name != "QuickTime Movie Header")
-                    continue;
-                foreach (var itemTag in itemDir.Tags)
-                {
-                    if (itemTag.Name == "Duration" &&
-                        !string.IsNullOrEmpty(itemTag.Description))
-#pragma warning disable CA1305 // Specify IFormatProvider
-                        return Convert.ToInt32(TimeSpan.Parse(itemTag.Description).TotalSeconds);
-#pragma warning restore CA1305 // Specify IFormatProvider
-                }
-            }
-            //var subIfdDirectory = directories.OfType<ExifSubIfdDirectory>().FirstOrDefault();
-            //var dateTime = subIfdDirectory?.GetDescription(Exif.TagDateTime);
-            return 0;/*
-            
-            var ffProbe = new NReco.VideoInfo.FFProbe();
-            var videoInfo = ffProbe.GetMediaInfo(pathToVideoFile);
-            return (int)Math.Ceiling(videoInfo.Duration.TotalSeconds);*/
-        }
-
-        private async Task<long?> GetContentLengthAsync(Uri requestUri)
-        {
-            // retry for prevent case of network error.
-            var i = 0;
-            while (i < MAX_RETRY)
-                try
-                {
-                    i++;
-                    using var request = new HttpRequestMessage(HttpMethod.Head, requestUri);
-                    var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
-                    response.EnsureSuccessStatusCode();
-                    return response.Content.Headers.ContentLength;
-                }
-                catch { await Task.Delay(3500).ConfigureAwait(false); }
-            throw new InvalidOperationException($"Can't get the file size");
+            throw new InvalidOperationException("OS not supported");
         }
     }
 }

@@ -202,6 +202,24 @@ namespace Etherna.DevconArchiveVideoImporter
                     Console.WriteLine($"Error:{ex.Message} \n#{videoCount} Video unable to import\n");
                     Console.ResetColor();
                 }
+                finally
+                {
+                    try
+                    {
+                        // Clear tmp folder.
+                        var di = new DirectoryInfo(tmpFolderFullPath);
+                        foreach (var file in di.GetFiles().OrderBy(file => file.CreationTime))
+                            file.Delete();
+                        foreach (var dir in di.GetDirectories().OrderBy(file => file.CreationTime))
+                            dir.Delete(true);
+                    }
+                    catch
+                    {
+                        Console.ForegroundColor = ConsoleColor.DarkRed;
+                        Console.WriteLine($"Warning: Unable to clear some file insede of {tmpFolderFullPath} please remove manually\n");
+                        Console.ResetColor();
+                    }
+                }
             }
 
             // Delete old video.

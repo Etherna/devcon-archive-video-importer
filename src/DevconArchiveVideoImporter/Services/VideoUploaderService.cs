@@ -99,8 +99,6 @@ namespace Etherna.DevconArchiveVideoImporter.Services
 
             // Upload thumbnail only one time.
             var thumbnailReference = await UploadThumbnailAsync(pinVideo, videoData, batchId).ConfigureAwait(false);
-            if (File.Exists(videoData.DownloadedThumbnailPath))
-                File.Delete(videoData.DownloadedThumbnailPath);
             if (offerVideo)
                 await ethernaClientService.OfferResourceAsync(thumbnailReference).ConfigureAwait(false);
 
@@ -109,10 +107,6 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                 // Upload video.
                 specificVideoResolution.SetUploadedVideoReference(await UploadFileVideoAsync(pinVideo, specificVideoResolution, batchId).ConfigureAwait(false));
                 await ethernaClientService.OfferResourceAsync(specificVideoResolution.UploadedVideoReference!).ConfigureAwait(false);
-
-                // Remove downloaded files.
-                if (File.Exists(specificVideoResolution.DownloadedFilePath))
-                    File.Delete(specificVideoResolution.DownloadedFilePath);
             }
 
             // Upload metadata.
@@ -146,8 +140,8 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                  $"{videoData.VideoDataResolutions.First().Resolution}",
                  JsonUtility.ToJson(new MetadataPersonalDataDto { Mode = MetadataUploadMode.DevconImporter, VideoId = videoData.YoutubeId! }),
                  new MetadataImageInput(
-                     videoManifestDto.Thumbnail.AspectRatio, 
-                     videoManifestDto.Thumbnail.Blurhash, 
+                     videoManifestDto.Thumbnail.AspectRatio,
+                     videoManifestDto.Thumbnail.Blurhash,
                      videoManifestDto.Thumbnail.Sources),
                  videoData.Title);
 

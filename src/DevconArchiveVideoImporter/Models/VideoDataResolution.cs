@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Etherna.DevconArchiveVideoImporter.Models
 {
@@ -10,29 +6,28 @@ namespace Etherna.DevconArchiveVideoImporter.Models
     {
         // Constructors.
         public VideoDataResolution(
-            int audioBitrate,
+            long audioBitrate,
+            string downloadedFilePath,
             string name,
-            int resolution,
-            Uri uri)
+            string resolution)
         {
             AudioBitrate = audioBitrate;
+            DownloadedFilePath = downloadedFilePath;
             Name = name;
             Resolution = resolution;
-            Uri = uri;
         }
 
         // Properties.
-        public int AudioBitrate { get; protected set; }
+        public long AudioBitrate { get; protected set; }
         public int Bitrate { get; protected set; }
-        public int Duration { get; protected set; }
+        public int Duration { get; protected set; } // Seconds.
         public string? DownloadedFileName { get; protected set; }
-        public string? DownloadedFilePath { get; protected set; }
+        public string DownloadedFilePath { get; protected set; }
         public string? DownloadedThumbnailPath { get; protected set; }
         public string? UploadedVideoReference { get; protected set; }
         public string Name { get; protected set; }
-        public int Resolution { get; protected set; }
-        public long Size { get; protected set; }
-        public Uri Uri { get; protected set; }
+        public string Resolution { get; protected set; }
+        public long Size { get; protected set; } // Bytes.
 
         // Methods.
         public void SetVideoInfo(
@@ -44,11 +39,6 @@ namespace Etherna.DevconArchiveVideoImporter.Models
             Size = fileSize;
             Duration = duration;
             Bitrate = (int)Math.Ceiling((double)fileSize * 8 / duration);
-        }
-
-        public void SetDownloadedFilePath(string downloadedFilePath)
-        {
-            DownloadedFilePath = downloadedFilePath;
         }
 
         public void SetUploadedVideoReference(string uploadedVideoReference)

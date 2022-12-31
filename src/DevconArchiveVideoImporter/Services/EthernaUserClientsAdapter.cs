@@ -40,7 +40,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                 Console.WriteLine($"Update Index: {videoData!.IndexVideoId}\t{hashReferenceMetadata}");
 
                 await ethernaUserClients.IndexClient.VideosClient.VideosPutAsync(videoData.IndexVideoId!, hashReferenceMetadata).ConfigureAwait(false);
-                
+
                 return videoData.IndexVideoId!;
             }
             else
@@ -116,12 +116,19 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             //Waiting for propagation time on gateway.
             var i = 0;
             while (i < WAITING_PROPAGATION_BATCH_RETRY)
+#pragma warning disable IDE0059 // Unnecessary assignment of a value
+#pragma warning disable CS0168 // Variable is declared but never used
                 try
                 {
                     i++;
                     return await ethernaUserClients.GatewayClient.SystemClient.PostageBatchRefAsync(referenceId).ConfigureAwait(false);
                 }
-                catch { await Task.Delay(WAITING_PROPAGATION_BATCH_SECONDS).ConfigureAwait(false); }
+                catch (Exception ex)
+                {
+                    await Task.Delay(WAITING_PROPAGATION_BATCH_SECONDS).ConfigureAwait(false);
+                }
+#pragma warning restore CS0168 // Variable is declared but never used
+#pragma warning restore IDE0059 // Unnecessary assignment of a value
             throw new InvalidOperationException($"Some error during get batch id");
         }
 

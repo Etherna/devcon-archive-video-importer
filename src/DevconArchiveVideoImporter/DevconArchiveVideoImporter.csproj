@@ -2,23 +2,28 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-	<TargetFramework>net6.0</TargetFramework>
-	<RootNamespace>Etherna.DevconArchiveVideoImporter</RootNamespace>
+    <TargetFramework>net6.0</TargetFramework>
+    <RootNamespace>Etherna.DevconArchiveVideoImporter</RootNamespace>
 
-	<Authors>Etherna Sagl</Authors>
-	<Description>Devcon archive video importer</Description>
+    <Authors>Etherna Sagl</Authors>
+    <Description>Devcon archive video importer</Description>
 
-	<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-	<Nullable>enable</Nullable>
-	<EnableNETAnalyzers>true</EnableNETAnalyzers>
-	<AnalysisMode>AllEnabledByDefault</AnalysisMode>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Nullable>enable</Nullable>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisMode>AllEnabledByDefault</AnalysisMode>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="FFmpeg\ffmpeg.linux-64" />
+    <None Remove="FFmpeg\ffmpeg.osx-64" />
+    <None Remove="FFmpeg\ffmpeg.windows-64.exe" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Bee.Net" Version="0.2.0-alpha.127" />
     <PackageReference Include="Blurhash.SkiaSharp" Version="2.0.0" />
     <PackageReference Include="EthernaServicesClient" Version="0.3.0-alpha.54" />
-    <PackageReference Include="MetadataExtractor" Version="2.7.2" />
     <PackageReference Include="MimeTypes" Version="2.4.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -27,10 +32,15 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="6.0.1" />
     <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="2.88.3" />
-    <PackageReference Include="VideoLibrary" Version="3.2.3-alpha.347" />
     <PackageReference Include="IdentityModel.OidcClient" Version="5.1.0" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="6.25.0" />
+    <PackageReference Include="YoutubeExplode" Version="6.2.5" />
+    <PackageReference Include="YoutubeExplode.Converter" Version="6.2.5" />
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="FFmpeg\" />
   </ItemGroup>
 
 </Project>
