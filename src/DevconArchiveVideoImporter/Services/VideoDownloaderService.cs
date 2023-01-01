@@ -8,7 +8,6 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using YoutubeExplode;
-using YoutubeExplode.Common;
 using YoutubeExplode.Converter;
 using YoutubeExplode.Videos.Streams;
 
@@ -125,6 +124,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
 
             return sourceVideoInfos;
         }
+        
         private async Task<VideoDataResolution> DownloadVideoAndMuxAsync(
             VideoOnlyStreamInfo videoOnlyStreamInfo,
             IStreamInfo audioOnlyStreamInfo,
@@ -246,6 +246,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                 catch { await Task.Delay(3500).ConfigureAwait(false); }
             throw new InvalidOperationException($"Some error during download of thumbnail {url}");
         }
+        
         private static bool ExistFFmpeg() =>
             File.Exists(GetFFmpegPath());
 

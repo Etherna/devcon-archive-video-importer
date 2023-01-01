@@ -9,7 +9,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Text.Json;
 using System.Threading.Tasks;
+using YoutubeExplode.Common;
 
 namespace Etherna.DevconArchiveVideoImporter.Services
 {
@@ -19,6 +22,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
         private readonly BeeNodeClient beeNodeClient;
         private readonly EthernaUserClientsAdapter ethernaClientService;
         private readonly string userEthAddr;
+        private readonly HttpClient httpClient;
 
 
         // Const.
@@ -30,7 +34,8 @@ namespace Etherna.DevconArchiveVideoImporter.Services
         public VideoUploaderService(
             BeeNodeClient beeNodeClient,
             EthernaUserClientsAdapter ethernaClientService,
-            string userEthAddr)
+            string userEthAddr,
+            HttpClient httpClient)
         {
             if (beeNodeClient is null)
                 throw new ArgumentNullException(nameof(beeNodeClient));
@@ -40,6 +45,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             this.beeNodeClient = beeNodeClient;
             this.ethernaClientService = ethernaClientService;
             this.userEthAddr = userEthAddr;
+            this.httpClient = httpClient;
         }
 
         // Public methods.
@@ -55,7 +61,11 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             // Create new batch.
             Console.WriteLine("Create batch...");
 
-            var batchReferenceId = await ethernaClientService.CreateBatchAsync().ConfigureAwait(false);
+            //var batchReferenceId = await ethernaClientService.CreateBatchAsync().ConfigureAwait(false);
+            var batchReferenceId = await CreateBatchAsync().ConfigureAwait(false);
+#pragma warning disable CA1307 // Specify StringComparison for clarity
+            batchReferenceId = batchReferenceId.Replace("\"", "");
+#pragma warning restore CA1307 // Specify StringComparison for clarity
 
             // Check and wait until created batchId is avaiable.
             Console.WriteLine("Waiting for batch ready...");
@@ -74,7 +84,8 @@ namespace Etherna.DevconArchiveVideoImporter.Services
 
                 // Waiting for batchId avaiable.
                 await Task.Delay((int)BATCH_CHECK_TIME.TotalMilliseconds).ConfigureAwait(false);
-                batchId = await ethernaClientService.GetBatchIdFromBatchReferenceAsync(batchReferenceId).ConfigureAwait(false);
+                //batchId = await ethernaClientService.GetBatchIdFromBatchReferenceAsync(batchReferenceId).ConfigureAwait(false);
+                batchId = await GetBatchIdFromReference(batchReferenceId).ConfigureAwait(false);
                 timeWaited += BATCH_CHECK_TIME.TotalSeconds;
             } while (string.IsNullOrWhiteSpace(batchId));
 
@@ -93,7 +104,8 @@ namespace Etherna.DevconArchiveVideoImporter.Services
 
                 // Waiting for batch ready.
                 await Task.Delay((int)BATCH_CHECK_TIME.TotalMilliseconds).ConfigureAwait(false);
-                batchUsable = await ethernaClientService.IsBatchUsableAsync(batchId).ConfigureAwait(false);
+                //batchUsable = await ethernaClientService.IsBatchUsableAsync(batchId).ConfigureAwait(false);
+                batchUsable = await GetBatchAsync(batchId).ConfigureAwait(false);
                 timeWaited += BATCH_CHECK_TIME.TotalSeconds;
             } while (!batchUsable);
 
@@ -105,8 +117,10 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             foreach (var specificVideoResolution in videoData.VideoDataResolutions)
             {
                 // Upload video.
-                specificVideoResolution.SetUploadedVideoReference(await UploadFileVideoAsync(pinVideo, specificVideoResolution, batchId).ConfigureAwait(false));
-                await ethernaClientService.OfferResourceAsync(specificVideoResolution.UploadedVideoReference!).ConfigureAwait(false);
+                var videoReference = await UploadFileVideoAsync(pinVideo, specificVideoResolution, batchId).ConfigureAwait(false);
+                specificVideoResolution.SetUploadedVideoReference(videoReference);
+                if (offerVideo)
+                    await ethernaClientService.OfferResourceAsync(specificVideoResolution.UploadedVideoReference!).ConfigureAwait(false);
             }
 
             // Upload metadata.
@@ -196,6 +210,47 @@ namespace Etherna.DevconArchiveVideoImporter.Services
         }
 
         // Private methods.
+        static readonly JsonSerializerOptions options = new()
+        {
+            PropertyNameCaseInsensitive = true
+        };
+        private async Task<string> CreateBatchAsync()
+        {
+            var httpResponse = await httpClient.GetAsync(new Uri("https://gateway.etherna.io/api/v0.3/system/chainstate")).ConfigureAwait(false);
+
+            httpResponse.EnsureSuccessStatusCode();
+            var responseText = await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
+            var chainPriceDto = System.Text.Json.JsonSerializer.Deserialize<ChainPriceDto>(responseText, options);
+            if (chainPriceDto is null)
+                throw new ArgumentNullException("Chainstate result is null");
+
+            var amount = (long)31536000 * 5 / chainPriceDto.CurrentPrice;
+            using var httpContent = new System.Net.Http.StringContent("{}", System.Text.Encoding.UTF8, "application/json");
+            httpResponse = await httpClient.PostAsync(new Uri($"https://gateway.etherna.io/api/v0.3/users/current/batches?depth={20}&amount={amount}"), httpContent).ConfigureAwait(false);
+
+            httpResponse.EnsureSuccessStatusCode();
+            return await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
+        }
+        private async Task<string> GetBatchIdFromReference(string referenceId)
+        {
+            var httpResponse = await httpClient.GetAsync(new Uri($"https://gateway.etherna.io/api/v0.3/System/postageBatchRef/{referenceId}")).ConfigureAwait(false);
+
+            if (httpResponse.StatusCode != System.Net.HttpStatusCode.OK)
+                return "";
+
+            return await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
+        }
+        private async Task<bool> GetBatchAsync(string batchId)
+        {
+            var httpResponse = await httpClient.GetAsync(new Uri($"https://gateway.etherna.io/api/v0.3/users/current/batches/{batchId}")).ConfigureAwait(false);
+
+            if (!httpResponse.IsSuccessStatusCode)
+                return false;
+
+            var responseText = await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
+            return JsonSerializer.Deserialize<BatchMinimalInfoDto>(responseText, options)?.Usable ?? false;
+        }
+
         private async Task<string> UploadFileVideoAsync(
             bool pinVideo,
             VideoDataResolution videoUploadDataItem,
@@ -263,7 +318,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                 metadataVideo.Sources.Add(new SourceDto
                 {
                     Bitrate = video.Bitrate,
-                    Quality = video.Resolution + "p",
+                    Quality = video.Resolution,
                     Reference = video.UploadedVideoReference!,
                     Size = video.Size
                 });
@@ -294,5 +349,16 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                 catch { await Task.Delay(3500).ConfigureAwait(false); }
             throw new InvalidOperationException("Some error during upload of thumbnail");
         }
+    }
+
+    internal class ChainPriceDto
+    {
+        public long CurrentPrice { get; set; }
+    }
+    internal class BatchMinimalInfoDto
+    {
+        public string? Id { get; set; }
+        public bool Exists { get; set; }
+        public bool Usable { get; set; }
     }
 }

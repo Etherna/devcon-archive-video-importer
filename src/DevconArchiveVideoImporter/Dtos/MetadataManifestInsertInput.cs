@@ -27,6 +27,7 @@ namespace Etherna.DevconArchiveVideoImporter.Dtos
             PersonalData = personalData;
             Thumbnail = thumbnail;
             Title = title;
+            Sources = new List<SourceDto>();
         }
 
         // Properties.
@@ -40,7 +41,7 @@ namespace Etherna.DevconArchiveVideoImporter.Dtos
         public string? PersonalData { get; }
         public long? UpdatedAt { get; }
         public string V { get; } = "1.1";
-        public ICollection<SourceDto> Sources { get; } = default!;
+        public ICollection<SourceDto> Sources { get; }
         public MetadataImageInput? Thumbnail { get; }
         public string? Title { get; }
     }

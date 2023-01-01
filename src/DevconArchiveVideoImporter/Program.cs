@@ -98,7 +98,8 @@ namespace Etherna.DevconArchiveVideoImporter
             var videoUploaderService = new VideoUploaderService(
                 beeNodeClient,
                 ethernaClientService,
-                userEthAddr);
+                userEthAddr,
+                httpClient);
             // Import each video.
             var indexParams = await ethernaClientService.GetSystemParametersAsync().ConfigureAwait(false);
             var videoCount = 0;
