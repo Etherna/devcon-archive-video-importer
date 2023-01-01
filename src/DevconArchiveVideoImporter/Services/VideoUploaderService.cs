@@ -233,15 +233,21 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             if (string.IsNullOrWhiteSpace(videoData.Description))
                 throw new InvalidOperationException("Description not defined");
 
-            using var input = File.OpenRead(videoData.DownloadedThumbnailPath);
-            using var inputStream = new SKManagedStream(input);
-            using var sourceImage = SKBitmap.Decode(inputStream);
-            var hash = Blurhash.SkiaSharp.Blurhasher.Encode(sourceImage, 4, 4);
-            var swarmImageRaw = new MetadataImageInput(
-                sourceImage.Width / sourceImage.Height,
-                hash,
-                new Dictionary<string, string> { { $"{sourceImage.Width}w", thumbnailReference } });
+            // Thumbnail.
+            MetadataImageInput? swarmImageRaw = null;
+            if (!string.IsNullOrWhiteSpace(videoData.DownloadedThumbnailPath))
+            {
+                using var input = File.OpenRead(videoData.DownloadedThumbnailPath);
+                using var inputStream = new SKManagedStream(input);
+                using var sourceImage = SKBitmap.Decode(inputStream);
+                var hash = Blurhash.SkiaSharp.Blurhasher.Encode(sourceImage, 4, 4);
+                swarmImageRaw = new MetadataImageInput(
+                    sourceImage.Width / sourceImage.Height,
+                    hash,
+                    new Dictionary<string, string> { { $"{sourceImage.Width}w", thumbnailReference } });
+            }
 
+            // Manifest.
             var metadataVideo = new MetadataManifestInsertInput(
                 DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 userEthAddr,

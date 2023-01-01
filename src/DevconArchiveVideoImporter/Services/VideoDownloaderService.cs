@@ -8,6 +8,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using YoutubeExplode;
+using YoutubeExplode.Common;
 using YoutubeExplode.Converter;
 using YoutubeExplode.Videos.Streams;
 
@@ -42,9 +43,9 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                 if (!videoResolutions.Any())
                     throw new InvalidOperationException($"Not found video");
 
-                // Download Thumbnail.
-                var downloadedThumbnailPath = await DownloadThumbnailAsync(videoData.YoutubeId!, tmpFolder).ConfigureAwait(false);
-                var originalQuality = videoResolutions.First().Resolution + "p";
+                // Download thumbnail.
+                var downloadedThumbnailPath = await DownloadThumbnailAsync(videoData).ConfigureAwait(false);
+                var originalQuality = videoResolutions.First().Resolution;
 
                 videoData.SetVideoResolutions(downloadedThumbnailPath, videoResolutions);
 
@@ -113,7 +114,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
 
                     resolutionVideoQuality.Add(currentRes.VideoQuality.Label);
 
-                    var videoDataResolution = await DownloadVideoAsync(
+                    var videoDataResolution = await DownloadVideoAndMuxAsync(
                         currentRes,
                         bestStreamAudioInfo,
                         videoTitle,
@@ -124,7 +125,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
 
             return sourceVideoInfos;
         }
-        private async Task<VideoDataResolution> DownloadVideoAsync(
+        private async Task<VideoDataResolution> DownloadVideoAndMuxAsync(
             VideoOnlyStreamInfo videoOnlyStreamInfo,
             IStreamInfo audioOnlyStreamInfo,
             string videoTitle,
@@ -152,7 +153,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                         new ConversionRequestBuilder(videoDataResolution.DownloadedFilePath).SetFFmpegPath(GetFFmpegPath()).Build(),
                         new Progress<double>((progressStatus) =>
                         {
-                            Console.Write($"Downloading resolution {videoDataResolution.Resolution} ({(progressStatus * 100):N0}%) {videoOnlyStreamInfo.Size.MegaBytes:N2} MB\r");
+                            Console.Write($"Downloading resolution {videoDataResolution.Resolution} and mux ({(progressStatus * 100):N0}%) {videoOnlyStreamInfo.Size.MegaBytes:N2} MB\r");
                         })).ConfigureAwait(false);
 
                     downloaded = true;
@@ -213,10 +214,24 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             return videoDataResolution;
         }
 
-        private async Task<string> DownloadThumbnailAsync(string videoId, string tmpFolder)
+        private async Task<string?> DownloadThumbnailAsync(VideoData videoData)
         {
-            string filePath = $"{tmpFolder}/{videoId}.jpg";
-            var url = $"https://img.youtube.com/vi/{videoId}/maxresdefault.jpg";
+            if (videoData is null)
+                throw new ArgumentNullException(nameof(videoData));
+            if (string.IsNullOrWhiteSpace(videoData.YoutubeUrl))
+                throw new InvalidOperationException("Invalid youtube url");
+
+            // Get manifest data
+            var videoManifest = await youTubeClient.Videos.GetAsync(videoData.YoutubeUrl).ConfigureAwait(false);
+
+            var url = videoManifest.Thumbnails
+                .OrderByDescending(thumbnail => thumbnail.Resolution.Area)
+                .FirstOrDefault()
+                ?.Url;
+            if (string.IsNullOrWhiteSpace(url))
+                return null;
+
+            string filePath = $"{tmpFolder}/{videoManifest.Id}.jpg";
             var i = 0;
             while (i < MAX_RETRY)
                 try

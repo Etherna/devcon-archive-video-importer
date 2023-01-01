@@ -14,7 +14,7 @@ namespace Etherna.DevconArchiveVideoImporter.Dtos
             long? duration,
             string? originalQuality,
             string? personalData,
-            MetadataImageInput thumbnail,
+            MetadataImageInput? thumbnail,
             string? title)
         {
             CreatedAt = createdAt;
@@ -41,7 +41,7 @@ namespace Etherna.DevconArchiveVideoImporter.Dtos
         public long? UpdatedAt { get; }
         public string V { get; } = "1.1";
         public ICollection<SourceDto> Sources { get; } = default!;
-        public MetadataImageInput Thumbnail { get; }
+        public MetadataImageInput? Thumbnail { get; }
         public string? Title { get; }
     }
 }

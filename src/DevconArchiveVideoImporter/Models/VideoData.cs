@@ -24,7 +24,7 @@ namespace Etherna.DevconArchiveVideoImporter.Models
 #pragma warning disable CA2227 // Collection properties should be read only
         public ICollection<VideoDataResolution> VideoDataResolutions { get; set; } = default!;
 #pragma warning restore CA2227 // Collection properties should be read only
-        public string DownloadedThumbnailPath { get; set; } = default!;
+        public string? DownloadedThumbnailPath { get; set; } = default!;
 
         // Properties composed.
         public string? YoutubeId
@@ -81,7 +81,7 @@ namespace Etherna.DevconArchiveVideoImporter.Models
         }
 
         public void SetVideoResolutions(
-            string downloadedThumbnailPath,
+            string? downloadedThumbnailPath,
             ICollection<VideoDataResolution> videoResolutions)
         {
             DownloadedThumbnailPath = downloadedThumbnailPath;
