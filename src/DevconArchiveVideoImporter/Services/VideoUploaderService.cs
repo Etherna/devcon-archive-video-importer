@@ -177,7 +177,6 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                 await File.WriteAllTextAsync(tmpMetadata, JsonUtility.ToJson(videoManifestDto)).ConfigureAwait(false);
 
                 // Upload file.
-                var fileParameterInput = new FileParameterInput(
                     File.OpenRead(tmpMetadata),
                     Path.GetFileName("metadata.json"),
                     MimeTypes.GetMimeType("application/json"));
