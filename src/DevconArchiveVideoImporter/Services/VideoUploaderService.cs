@@ -175,18 +175,18 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             try
             {
                 await File.WriteAllTextAsync(tmpMetadata, JsonUtility.ToJson(videoManifestDto)).ConfigureAwait(false);
-
-                // Upload file.
-                    File.OpenRead(tmpMetadata),
-                    Path.GetFileName("metadata.json"),
-                    MimeTypes.GetMimeType("application/json"));
-
+                
                 var i = 0;
                 while (i < MAX_RETRY &&
                     string.IsNullOrWhiteSpace(hashMetadataReference))
                     try
                     {
                         i++;
+                        // Upload file.
+                        var fileParameterInput = new FileParameterInput(
+                            File.OpenRead(tmpMetadata),
+                            Path.GetFileName("metadata.json"),
+                            MimeTypes.GetMimeType("application/json"));
                         using var fileStream = File.OpenRead(tmpMetadata);
                         hashMetadataReference = await beeNodeClient.GatewayClient!.UploadFileAsync(
                             videoManifestDto.BatchId!,
@@ -256,15 +256,15 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             string batchId)
         {
             Console.WriteLine($"Uploading video {videoUploadDataItem.Resolution} in progress...");
-            var fileParameterInput = new FileParameterInput(
-                File.OpenRead(videoUploadDataItem.DownloadedFilePath!),
-                Path.GetFileName(videoUploadDataItem.DownloadedFilePath!),
-                MimeTypes.GetMimeType(Path.GetFileName(videoUploadDataItem.DownloadedFilePath!)));
             var i = 0;
             while (i < MAX_RETRY)
                 try
                 {
                     i++;
+                    var fileParameterInput = new FileParameterInput(
+                        File.OpenRead(videoUploadDataItem.DownloadedFilePath!),
+                        Path.GetFileName(videoUploadDataItem.DownloadedFilePath!),
+                        MimeTypes.GetMimeType(Path.GetFileName(videoUploadDataItem.DownloadedFilePath!)));
                     return await beeNodeClient.GatewayClient!.UploadFileAsync(
                         batchId,
                         files: new List<FileParameterInput> { fileParameterInput },
@@ -330,16 +330,16 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             string batchId)
         {
             Console.WriteLine("Uploading thumbnail in progress...");
-            var fileThumbnailParameterInput = new FileParameterInput(
-                File.OpenRead(videoData.DownloadedThumbnailPath!),
-                Path.GetFileName(videoData.DownloadedThumbnailPath!),
-                MimeTypes.GetMimeType(Path.GetFileName(videoData.DownloadedThumbnailPath!)));
 
             var i = 0;
             while (i < MAX_RETRY)
                 try
                 {
                     i++;
+                    var fileThumbnailParameterInput = new FileParameterInput(
+                        File.OpenRead(videoData.DownloadedThumbnailPath!),
+                        Path.GetFileName(videoData.DownloadedThumbnailPath!),
+                        MimeTypes.GetMimeType(Path.GetFileName(videoData.DownloadedThumbnailPath!)));
                     return await beeNodeClient.GatewayClient!.UploadFileAsync(
                         batchId,
                         files: new List<FileParameterInput> { fileThumbnailParameterInput },
