@@ -19,13 +19,17 @@ namespace Etherna.DevconArchiveVideoImporter.Services
         private const int MAX_RETRY = 3;
 
         // Fields.
+        private readonly string ffMpegFolderPath;
         private readonly string tmpFolder;
         private readonly HttpClient client = new();
         private readonly YoutubeClient youTubeClient = new();
 
         // Constractor.
-        public VideoDownloaderService(string tmpFolder)
+        public VideoDownloaderService(
+            string ffMpegFolderPath,
+            string tmpFolder)
         {
+            this.ffMpegFolderPath = ffMpegFolderPath;
             this.tmpFolder = tmpFolder;
         }
 
@@ -84,6 +88,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             var sourceVideoInfos = new List<VideoDataResolution>();
             // Take muxed streams.
             var allResolutions = streamInfos
+                .Where(stream => stream.Container == Container.Mp4)
                 .OrderBy(res => res.VideoResolution.Area)
                 .Distinct();
             foreach (var currentRes in allResolutions)
@@ -92,6 +97,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
 
                 var videoDataResolution = await DownloadVideoAsync(
                     currentRes,
+                    null,
                     videoTitle,
                     videoManifest.Duration ?? TimeSpan.Zero).ConfigureAwait(false);
                 sourceVideoInfos.Add(videoDataResolution);
@@ -113,7 +119,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
 
                     resolutionVideoQuality.Add(currentRes.VideoQuality.Label);
 
-                    var videoDataResolution = await DownloadVideoAndMuxAsync(
+                    var videoDataResolution = await DownloadVideoAsync(
                         currentRes,
                         bestStreamAudioInfo,
                         videoTitle,
@@ -125,18 +131,19 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             return sourceVideoInfos;
         }
         
-        private async Task<VideoDataResolution> DownloadVideoAndMuxAsync(
-            VideoOnlyStreamInfo videoOnlyStreamInfo,
-            IStreamInfo audioOnlyStreamInfo,
+        private async Task<VideoDataResolution> DownloadVideoAsync(
+            IVideoStreamInfo videoStreamInfo,
+            IStreamInfo? audioStreamForMuxInfo,
             string videoTitle,
             TimeSpan duration)
         {
-            var videoName = $"{videoTitle}_{videoOnlyStreamInfo.VideoResolution}";
+            var videoName = $"{videoTitle}_{videoStreamInfo.VideoResolution}";
+            var filename = audioStreamForMuxInfo is null ? $"{videoName}.{videoStreamInfo.Container}" : $"{videoName}.muxed.{videoStreamInfo.Container}";
             var videoDataResolution = new VideoDataResolution(
-                videoOnlyStreamInfo.Bitrate.BitsPerSecond,
-                Path.Combine(tmpFolder, $"{videoName}.muxed.mp4"),
+                videoStreamInfo.Bitrate.BitsPerSecond,
+                Path.Combine(tmpFolder, filename),
                 videoName,
-                videoOnlyStreamInfo.VideoQuality.Label);
+                videoStreamInfo.VideoQuality.Label);
 
             var i = 0;
             var downloaded = false;
@@ -145,70 +152,38 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                 try
                 {
                     i++;
-                    var streamInfos = new IStreamInfo[] { audioOnlyStreamInfo, videoOnlyStreamInfo };
 
                     // Download and process them into one file
-                    await youTubeClient.Videos.DownloadAsync(
+                    if (audioStreamForMuxInfo is null)
+                        await youTubeClient.Videos.Streams.DownloadAsync(
+                        videoStreamInfo,
+                        videoDataResolution.DownloadedFilePath,
+                        new Progress<double>((progressStatus) =>
+                        {
+                            Console.Write($"Downloading resolution {videoDataResolution.Resolution} ({(progressStatus * 100):N0}%) {videoStreamInfo.Size.MegaBytes:N2} MB\r");
+                        })).ConfigureAwait(false);
+                    else
+                    {
+                        var streamInfos = new IStreamInfo[] { audioStreamForMuxInfo, videoStreamInfo };
+                        await youTubeClient.Videos.DownloadAsync(
                         streamInfos,
                         new ConversionRequestBuilder(videoDataResolution.DownloadedFilePath).SetFFmpegPath(GetFFmpegPath()).Build(),
                         new Progress<double>((progressStatus) =>
                         {
-                            Console.Write($"Downloading resolution {videoDataResolution.Resolution} and mux ({(progressStatus * 100):N0}%) {videoOnlyStreamInfo.Size.MegaBytes:N2} MB\r");
+                            Console.Write($"Downloading and mux resolution {videoDataResolution.Resolution} ({(progressStatus * 100):N0}%) {videoStreamInfo.Size.MegaBytes:N2} MB\r");
                         })).ConfigureAwait(false);
+                    }
 
                     downloaded = true;
                 }
                 catch { await Task.Delay(3500).ConfigureAwait(false); }
             if (!downloaded)
-                throw new InvalidOperationException($"Some error during download of video {videoOnlyStreamInfo.Url}");
+                throw new InvalidOperationException($"Some error during download of video {videoStreamInfo.Url}");
             Console.WriteLine("");
 
             videoDataResolution.SetVideoInfo(
                 videoName,
-                videoOnlyStreamInfo.Size.Bytes,
-                (int)duration.TotalSeconds);
-
-            return videoDataResolution;
-        }
-
-        private async Task<VideoDataResolution> DownloadVideoAsync(
-            MuxedStreamInfo muxedStreamInfo,
-            string videoTitle,
-            TimeSpan duration)
-        {
-            var videoName = $"{videoTitle}_{muxedStreamInfo.VideoResolution}";
-            var videoFilepath = Path.Combine(tmpFolder, $"{videoName}.{muxedStreamInfo.Container}");
-            var videoDataResolution = new VideoDataResolution(
-                muxedStreamInfo.Bitrate.BitsPerSecond,
-                videoFilepath,
-                videoName,
-                muxedStreamInfo.VideoQuality.Label);
-
-            var i = 0;
-            var downloaded = false;
-            while (i < MAX_RETRY &&
-                    !downloaded)
-                try
-                {
-                    i++;
-                    await youTubeClient.Videos.Streams.DownloadAsync(
-                        muxedStreamInfo,
-                        videoDataResolution.DownloadedFilePath,
-                        new Progress<double>((progressStatus) =>
-                        {
-                            Console.Write($"Downloading resolution {videoDataResolution.Resolution} ({(progressStatus * 100):N0}%) {muxedStreamInfo.Size.MegaBytes:N2} MB\r");
-                        })).ConfigureAwait(false);
-
-                    downloaded = true;
-                }
-                catch { await Task.Delay(3500).ConfigureAwait(false); }
-            if (!downloaded)
-                throw new InvalidOperationException($"Some error during download of video {muxedStreamInfo.Url}");
-            Console.WriteLine("");
-
-            videoDataResolution.SetVideoInfo(
-                videoName,
-                muxedStreamInfo.Size.Bytes,
+                videoStreamInfo.Size.Bytes,
                 (int)duration.TotalSeconds);
 
             return videoDataResolution;
@@ -247,17 +222,17 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             throw new InvalidOperationException($"Some error during download of thumbnail {url}");
         }
         
-        private static bool ExistFFmpeg() =>
+        private bool ExistFFmpeg() =>
             File.Exists(GetFFmpegPath());
 
-        private static string GetFFmpegPath()
+        private string GetFFmpegPath()
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                return "FFmpeg/ffmpeg.windows-64.exe";
+                return $"{ffMpegFolderPath.TrimEnd('/').TrimEnd('\\')}/ffmpeg.exe";
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                return "FFmpeg/ffmpeg.linux-64";
+                return $"{ffMpegFolderPath.TrimEnd('/').TrimEnd('\\')}/ffmpeg";
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-                return "FFmpeg/ffmpeg.osx-64";
+                return $"{ffMpegFolderPath.TrimEnd('/').TrimEnd('\\')}/ffmpeg";
 
             throw new InvalidOperationException("OS not supported");
         }

@@ -10,7 +10,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
-using System.Text.Json;
 using System.Threading.Tasks;
 using YoutubeExplode.Common;
 
@@ -23,7 +22,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
         private readonly EthernaUserClientsAdapter ethernaClientService;
         private readonly string userEthAddr;
         private readonly HttpClient httpClient;
-
+        
 
         // Const.
         private readonly TimeSpan BATCH_CHECK_TIME = new(0, 0, 0, 10);
@@ -61,11 +60,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             // Create new batch.
             Console.WriteLine("Create batch...");
 
-            //var batchReferenceId = await ethernaClientService.CreateBatchAsync().ConfigureAwait(false);
-            var batchReferenceId = await CreateBatchAsync().ConfigureAwait(false);
-#pragma warning disable CA1307 // Specify StringComparison for clarity
-            batchReferenceId = batchReferenceId.Replace("\"", "");
-#pragma warning restore CA1307 // Specify StringComparison for clarity
+            var batchReferenceId = await ethernaClientService.CreateBatchAsync().ConfigureAwait(false);
 
             // Check and wait until created batchId is avaiable.
             Console.WriteLine("Waiting for batch ready...");
@@ -104,14 +99,13 @@ namespace Etherna.DevconArchiveVideoImporter.Services
 
                 // Waiting for batch ready.
                 await Task.Delay((int)BATCH_CHECK_TIME.TotalMilliseconds).ConfigureAwait(false);
-                //batchUsable = await ethernaClientService.IsBatchUsableAsync(batchId).ConfigureAwait(false);
-                batchUsable = await GetBatchAsync(batchId).ConfigureAwait(false);
+                batchUsable = await ethernaClientService.IsBatchUsableAsync(batchId).ConfigureAwait(false);
                 timeWaited += BATCH_CHECK_TIME.TotalSeconds;
             } while (!batchUsable);
 
             // Upload thumbnail only one time.
             var thumbnailReference = await UploadThumbnailAsync(pinVideo, videoData, batchId).ConfigureAwait(false);
-            if (offerVideo)
+            //if (offerVideo)
                 await ethernaClientService.OfferResourceAsync(thumbnailReference).ConfigureAwait(false);
 
             foreach (var specificVideoResolution in videoData.VideoDataResolutions)
@@ -129,7 +123,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                 batchId,
                 thumbnailReference,
                 pinVideo).ConfigureAwait(false);
-            if (offerVideo)
+            //if (offerVideo)
                 await ethernaClientService.OfferResourceAsync(hashMetadataReference).ConfigureAwait(false);
 
             // Sync Index.
@@ -187,7 +181,6 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                             File.OpenRead(tmpMetadata),
                             Path.GetFileName("metadata.json"),
                             MimeTypes.GetMimeType("application/json"));
-                        using var fileStream = File.OpenRead(tmpMetadata);
                         hashMetadataReference = await beeNodeClient.GatewayClient!.UploadFileAsync(
                             videoManifestDto.BatchId!,
                             files: new List<FileParameterInput> { fileParameterInput },
@@ -209,27 +202,6 @@ namespace Etherna.DevconArchiveVideoImporter.Services
         }
 
         // Private methods.
-        static readonly JsonSerializerOptions options = new()
-        {
-            PropertyNameCaseInsensitive = true
-        };
-        private async Task<string> CreateBatchAsync()
-        {
-            var httpResponse = await httpClient.GetAsync(new Uri("https://gateway.etherna.io/api/v0.3/system/chainstate")).ConfigureAwait(false);
-
-            httpResponse.EnsureSuccessStatusCode();
-            var responseText = await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
-            var chainPriceDto = System.Text.Json.JsonSerializer.Deserialize<ChainPriceDto>(responseText, options);
-            if (chainPriceDto is null)
-                throw new ArgumentNullException("Chainstate result is null");
-
-            var amount = (long)31536000 * 5 / chainPriceDto.CurrentPrice;
-            using var httpContent = new System.Net.Http.StringContent("{}", System.Text.Encoding.UTF8, "application/json");
-            httpResponse = await httpClient.PostAsync(new Uri($"https://gateway.etherna.io/api/v0.3/users/current/batches?depth={20}&amount={amount}"), httpContent).ConfigureAwait(false);
-
-            httpResponse.EnsureSuccessStatusCode();
-            return await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
-        }
         private async Task<string> GetBatchIdFromReference(string referenceId)
         {
             var httpResponse = await httpClient.GetAsync(new Uri($"https://gateway.etherna.io/api/v0.3/System/postageBatchRef/{referenceId}")).ConfigureAwait(false);
@@ -238,16 +210,6 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                 return "";
 
             return await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
-        }
-        private async Task<bool> GetBatchAsync(string batchId)
-        {
-            var httpResponse = await httpClient.GetAsync(new Uri($"https://gateway.etherna.io/api/v0.3/users/current/batches/{batchId}")).ConfigureAwait(false);
-
-            if (!httpResponse.IsSuccessStatusCode)
-                return false;
-
-            var responseText = await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
-            return JsonSerializer.Deserialize<BatchMinimalInfoDto>(responseText, options)?.Usable ?? false;
         }
 
         private async Task<string> UploadFileVideoAsync(
@@ -348,16 +310,5 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                 catch { await Task.Delay(3500).ConfigureAwait(false); }
             throw new InvalidOperationException("Some error during upload of thumbnail");
         }
-    }
-
-    internal class ChainPriceDto
-    {
-        public long CurrentPrice { get; set; }
-    }
-    internal class BatchMinimalInfoDto
-    {
-        public string? Id { get; set; }
-        public bool Exists { get; set; }
-        public bool Usable { get; set; }
     }
 }

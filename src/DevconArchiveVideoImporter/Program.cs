@@ -24,6 +24,7 @@ namespace Etherna.DevconArchiveVideoImporter
             "-p\tPin video\n" +
             "-d\tDelete old videos that are no longer in the .MD files\n" +
             "-c\tDelete all index video with no valid manifest or old PersonalData\n" +
+            "-ff\tPath FFmpeg (default dir: FFmpeg\\)\n" +
             "\n" +
             "-h\tPrint help\n";
 
@@ -31,23 +32,26 @@ namespace Etherna.DevconArchiveVideoImporter
         {
             // Parse arguments.
             string? sourceFolderPath = null;
+            string? ffMpegFolderPath = null;
             bool offerVideo = false;
             bool pinVideo = false;
-            bool deleteVideo = false;
-            bool cleanIndex = false;
+            bool deleteOldVideo = false;
+            bool deleteInvalidVideo = false;
             for (int i = 0; i < args.Length; i++)
             {
                 switch (args[i])
                 {
                     case "-s": sourceFolderPath = args[++i]; break;
+                    case "-ff": ffMpegFolderPath = args[++i]; break;
                     case "-f": offerVideo = true; break;
                     case "-p": pinVideo = true; break;
-                    case "-d": deleteVideo = true; break;
-                    case "-c": cleanIndex = true; break;
+                    case "-d": deleteOldVideo = true; break;
+                    case "-c": deleteInvalidVideo = true; break;
                     case "-h": Console.Write(HelpText); return;
                     default: throw new ArgumentException(args[i] + " is not a valid argument");
                 }
             }
+            ffMpegFolderPath ??= "FFmpeg\\";
 
             // Request missing params.
             Console.WriteLine();
@@ -87,7 +91,7 @@ namespace Etherna.DevconArchiveVideoImporter
                 new Uri(CommonConst.SSO_AUTHORITY),
                 () => httpClient);
             var ethernaClientService = new EthernaUserClientsAdapter(ethernaUserClients);
-            using var videoDownloaderService = new VideoDownloaderService(tmpFolderFullPath);
+            using var videoDownloaderService = new VideoDownloaderService(ffMpegFolderPath, tmpFolderFullPath);
             var beeNodeClient = new BeeNodeClient(
                 CommonConst.ETHERNA_GATEWAY,
                 CommonConst.BEENODE_GATEWAYPORT,
@@ -224,7 +228,7 @@ namespace Etherna.DevconArchiveVideoImporter
             }
 
             // Delete old video.
-            if (deleteVideo)
+            if (deleteOldVideo)
             {
                 // Get video indexed
                 var importedVideos = await ethernaClientService.GetAllUserVideoAsync(userEthAddr).ConfigureAwait(false);
@@ -258,7 +262,7 @@ namespace Etherna.DevconArchiveVideoImporter
             }
 
             // User video.
-            if (cleanIndex)
+            if (deleteInvalidVideo)
             {
                 var videos = await ethernaClientService.GetAllUserVideoAsync(userEthAddr).ConfigureAwait(false);
                 foreach (var video in videos)

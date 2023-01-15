@@ -2,7 +2,8 @@
   "profiles": {
     "DevconArchiveVideoParser": {
       "commandName": "Project",
-      "commandLineArgs": "-s D:\\tmp\\videos -d"
+      //"commandLineArgs": "-s C:\\tmp\\devcon_video -c -d -f -p"
+      "commandLineArgs": "-h"
     }
   }
 }
