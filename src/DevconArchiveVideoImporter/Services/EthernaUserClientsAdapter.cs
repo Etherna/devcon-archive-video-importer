@@ -96,7 +96,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
 
             try
             {
-                var videoDto = await ethernaUserClients.IndexClient.VideosClient.ManifestAsync(videoId).ConfigureAwait(false);
+                var videoDto = await ethernaUserClients.IndexClient.VideosClient.VideosGetAsync(videoId).ConfigureAwait(false);
                 return videoDto.LastValidManifest;
             }
             catch (IndexApiException ex) when (ex.StatusCode == 404)
