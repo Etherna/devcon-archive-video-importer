@@ -126,8 +126,8 @@ namespace Etherna.DevconArchiveVideoImporter
                             personalData.VideoId == video.YoutubeId)
                         {
                             // When YoutubeId is already uploaded, check for any change in metadata.
-                            if (video.Title != lastValidManifest.Title ||
-                                video.Description != lastValidManifest.Description)
+                            if (video.Title == lastValidManifest.Title &&
+                                video.Description == lastValidManifest.Description)
                             {
                                 // No change in any fields.
                                 Console.WriteLine($"Video already on etherna");

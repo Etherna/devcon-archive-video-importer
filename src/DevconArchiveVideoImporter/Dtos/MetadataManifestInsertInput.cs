@@ -15,7 +15,8 @@ namespace Etherna.DevconArchiveVideoImporter.Dtos
             string? originalQuality,
             string? personalData,
             MetadataImageInput? thumbnail,
-            string? title)
+            string? title,
+            ICollection<SourceDto> sources)
         {
             CreatedAt = createdAt;
             OwnerAddress = ownerAddress;
@@ -27,7 +28,7 @@ namespace Etherna.DevconArchiveVideoImporter.Dtos
             PersonalData = personalData;
             Thumbnail = thumbnail;
             Title = title;
-            Sources = new List<SourceDto>();
+            Sources = sources ?? new List<SourceDto>();
         }
 
         // Properties.

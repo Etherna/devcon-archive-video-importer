@@ -12,6 +12,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using YoutubeExplode.Common;
+using YoutubeExplode.Videos;
 
 namespace Etherna.DevconArchiveVideoImporter.Services
 {
@@ -145,13 +146,14 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                 videoManifestDto.BatchId,
                 videoData.Description,
                 videoData.Duration,
-                 $"{videoData.VideoDataResolutions.First().Resolution}",
+                 $"720p",
                  JsonUtility.ToJson(new MetadataPersonalDataDto { Mode = MetadataUploadMode.DevconImporter, VideoId = videoData.YoutubeId! }),
                  new MetadataImageInput(
                      videoManifestDto.Thumbnail.AspectRatio,
                      videoManifestDto.Thumbnail.Blurhash,
                      videoManifestDto.Thumbnail.Sources),
-                 videoData.Title);
+                 videoData.Title,
+                 videoManifestDto.Sources);
 
             return await UploadMetadataAsync(
                 metadataManifestInsertInput,
@@ -273,16 +275,14 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                  $"{videoData.VideoDataResolutions.First().Resolution}",
                  JsonUtility.ToJson(new MetadataPersonalDataDto { Mode = MetadataUploadMode.DevconImporter, VideoId = videoData.YoutubeId! }),
                  swarmImageRaw,
-                 videoData.Title);
-
-            foreach (var video in videoData.VideoDataResolutions)
-                metadataVideo.Sources.Add(new SourceDto
-                {
-                    Bitrate = video.Bitrate,
-                    Quality = video.Resolution,
-                    Reference = video.UploadedVideoReference!,
-                    Size = video.Size
-                });
+                 videoData.Title,
+                 videoData.VideoDataResolutions.Select(vr => new SourceDto
+                 {
+                     Bitrate = vr.Bitrate,
+                     Quality = vr.Resolution,
+                     Reference = vr.UploadedVideoReference!,
+                     Size = vr.Size
+                 }).ToList());
 
             return await UploadMetadataAsync(metadataVideo, videoData, swarmPin).ConfigureAwait(false);
         }
