@@ -8,7 +8,7 @@ using System.Text.Json;
 
 namespace Etherna.DevconArchiveVideoImporter.Services
 {
-    internal class MdVideoParserService
+    internal sealed class MdVideoParserService
     {
         // Fields.
         public static readonly string[] _keywordForArrayString = Array.Empty<string>();

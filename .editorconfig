@@ -37,6 +37,9 @@ dotnet_diagnostic.CA1812.severity = none    # Doing extensive use of Dependency 
 # CA1822: Mark members as static
 dotnet_diagnostic.CA1822.severity = none    # Don't like static members
 
+# CA1851: Possible multiple enumerations of 'IEnumerable' collection
+dotnet_diagnostic.CA1851.severity = none    # Generates false positives, and it can't infer real logic
+
 # CA1054: URI-like parameters should not be strings
 dotnet_diagnostic.CA1054.severity = none
 

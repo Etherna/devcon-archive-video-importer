@@ -13,7 +13,7 @@ using YoutubeExplode.Videos.Streams;
 
 namespace Etherna.DevconArchiveVideoImporter.Services
 {
-    internal class VideoDownloaderService : IVideoDownloaderService, IDisposable
+    internal sealed class VideoDownloaderService : IVideoDownloaderService, IDisposable
     {
         // Const.
         private const int MAX_RETRY = 3;

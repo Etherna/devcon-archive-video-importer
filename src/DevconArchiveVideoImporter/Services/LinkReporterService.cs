@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Etherna.DevconArchiveVideoImporter.Services
 {
-    internal class LinkReporterService : ILinkReporterService
+    internal sealed class LinkReporterService : ILinkReporterService
     {
         // Fields.
         private const string EthernaIndexPrefix = "ethernaIndex:";

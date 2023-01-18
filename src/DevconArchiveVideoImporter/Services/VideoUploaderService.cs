@@ -16,7 +16,7 @@ using YoutubeExplode.Videos;
 
 namespace Etherna.DevconArchiveVideoImporter.Services
 {
-    internal class VideoUploaderService : IVideoUploaderService
+    internal sealed class VideoUploaderService : IVideoUploaderService
     {
         // Fields.
         private readonly BeeNodeClient beeNodeClient;

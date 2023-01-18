@@ -2,7 +2,7 @@
 
 namespace Etherna.DevconArchiveVideoImporter.Dtos
 {
-    internal class MetadataImageInput
+    internal sealed class MetadataImageInput
     {
         // Constructors.
         public MetadataImageInput(

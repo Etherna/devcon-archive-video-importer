@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 
 namespace Etherna.DevconArchiveVideoImporter
 {
-    internal class Program
+    internal static class Program
     {
         // Consts.
         private const string HelpText =
@@ -97,7 +97,7 @@ namespace Etherna.DevconArchiveVideoImporter
                 CommonConst.BEENODE_GATEWAYPORT,
                 null,
                 CommonConst.BEENODE_GATEWAYVERSION,
-                DebugApiVersion.v3_0_2,
+                CommonConst.BEENODE_DEBUGAVERSION,
                 httpClient);
             var videoUploaderService = new VideoUploaderService(
                 beeNodeClient,
