@@ -63,7 +63,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
         public async Task<string> CreateBatchAsync()
         {
             var chainState = await ethernaUserClients.GatewayClient.SystemClient.ChainstateAsync().ConfigureAwait(false);
-            var amount = (long)BATCH_DURANTION_TIME.TotalSeconds * BLOCK_TIME / chainState.CurrentPrice;
+            var amount = (long)BATCH_DURANTION_TIME.TotalSeconds * chainState.CurrentPrice / BLOCK_TIME;
             return await ethernaUserClients.GatewayClient.UsersClient.BatchesPostAsync(BATCH_DEEP, amount).ConfigureAwait(false);
         }
 
