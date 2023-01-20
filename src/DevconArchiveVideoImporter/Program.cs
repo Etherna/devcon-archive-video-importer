@@ -51,6 +51,12 @@ namespace Etherna.DevconArchiveVideoImporter
                     default: throw new ArgumentException(args[i] + " is not a valid argument");
                 }
             }
+            if (ffMpegFolderPath is not null &&
+                !Directory.Exists(ffMpegFolderPath))
+            {
+                Console.WriteLine($"Path FFmpeg not found ({ffMpegFolderPath})");
+                return;
+            }
             ffMpegFolderPath ??= "FFmpeg\\";
 
             // Request missing params.
