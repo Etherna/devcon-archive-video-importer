@@ -234,6 +234,7 @@ namespace Etherna.DevconArchiveVideoImporter
                 var importedVideos = await ethernaClientService.GetAllUserVideoAsync(userEthAddr).ConfigureAwait(false);
                 var videoIds = importedVideos.Select(
                         videoData => JsonUtility.FromJson<MetadataPersonalDataDto>(videoData?.LastValidManifest?.PersonalData)?.VideoId)
+                    .Where(v => !string.IsNullOrWhiteSpace(v))
                     .ToList();
 
                 // Get video indexed but not in repository files *.md
