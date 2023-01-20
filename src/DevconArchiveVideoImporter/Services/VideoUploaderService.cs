@@ -260,7 +260,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                 using var sourceImage = SKBitmap.Decode(inputStream);
                 var hash = Blurhash.SkiaSharp.Blurhasher.Encode(sourceImage, 4, 4);
                 swarmImageRaw = new MetadataImageInput(
-                    sourceImage.Width / sourceImage.Height,
+                    (float)sourceImage.Width / (float)sourceImage.Height,
                     hash,
                     new Dictionary<string, string> { { $"{sourceImage.Width}w", thumbnailReference } });
             }
