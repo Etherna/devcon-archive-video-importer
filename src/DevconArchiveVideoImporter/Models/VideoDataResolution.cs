@@ -24,6 +24,7 @@ namespace Etherna.DevconArchiveVideoImporter.Models
         public string? DownloadedFileName { get; protected set; }
         public string DownloadedFilePath { get; protected set; }
         public string? DownloadedThumbnailPath { get; protected set; }
+        public string? UploadedThumbnailReference { get; protected set; }
         public string? UploadedVideoReference { get; protected set; }
         public string Name { get; protected set; }
         public string Resolution { get; protected set; }
@@ -41,6 +42,16 @@ namespace Etherna.DevconArchiveVideoImporter.Models
             Bitrate = (int)Math.Ceiling((double)fileSize * 8 / duration);
         }
 
+        public void SetDownloadThumbnail(string? downloadedThumbnailPath)
+        {
+            DownloadedThumbnailPath = downloadedThumbnailPath;
+        }
+
+        public void SetUploadedThumbnailReference(string uploadedThumbnailReference)
+        {
+            UploadedThumbnailReference = uploadedThumbnailReference;
+        }
+        
         public void SetUploadedVideoReference(string uploadedVideoReference)
         {
             UploadedVideoReference = uploadedVideoReference;

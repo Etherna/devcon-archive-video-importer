@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using YoutubeExplode;
 using YoutubeExplode.Converter;
+using YoutubeExplode.Videos;
 using YoutubeExplode.Videos.Streams;
 
 namespace Etherna.DevconArchiveVideoImporter.Services
@@ -46,11 +47,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                 if (!videoResolutions.Any())
                     throw new InvalidOperationException($"Not found video");
 
-                // Download thumbnail.
-                var downloadedThumbnailPath = await DownloadThumbnailAsync(videoData).ConfigureAwait(false);
-                var originalQuality = videoResolutions.First().Resolution;
-
-                videoData.SetVideoResolutions(downloadedThumbnailPath, videoResolutions);
+                videoData.SetVideoResolutions(videoResolutions);
 
                 return videoData;
             }
@@ -99,7 +96,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                     currentRes,
                     null,
                     videoTitle,
-                    videoManifest.Duration ?? TimeSpan.Zero).ConfigureAwait(false);
+                    videoManifest).ConfigureAwait(false);
                 sourceVideoInfos.Add(videoDataResolution);
             }
 
@@ -123,7 +120,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                         currentRes,
                         bestStreamAudioInfo,
                         videoTitle,
-                        videoManifest.Duration ?? TimeSpan.Zero).ConfigureAwait(false);
+                        videoManifest).ConfigureAwait(false);
                     sourceVideoInfos.Add(videoDataResolution);
                 }
             }
@@ -135,7 +132,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             IVideoStreamInfo videoStreamInfo,
             IStreamInfo? audioStreamForMuxInfo,
             string videoTitle,
-            TimeSpan duration)
+            Video videoManifest)
         {
             var videoName = $"{videoTitle}_{videoStreamInfo.VideoResolution}";
             var filename = audioStreamForMuxInfo is null ? $"{videoName}.{videoStreamInfo.Container}" : $"{videoName}.muxed.{videoStreamInfo.Container}";
@@ -144,6 +141,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                 Path.Combine(tmpFolder, filename),
                 videoName,
                 videoStreamInfo.VideoQuality.Label);
+            var duration = videoManifest.Duration ?? TimeSpan.Zero;
 
             var i = 0;
             var downloaded = false;
@@ -179,6 +177,10 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                 catch { await Task.Delay(3500).ConfigureAwait(false); }
             if (!downloaded)
                 throw new InvalidOperationException($"Some error during download of video {videoStreamInfo.Url}");
+
+            // Download thumbnail.
+            var thumbnailPath = await DownloadThumbnailAsync(videoManifest, videoStreamInfo.VideoResolution.Height).ConfigureAwait(false);
+            videoDataResolution.SetDownloadThumbnail(thumbnailPath);
             Console.WriteLine("");
 
             videoDataResolution.SetVideoInfo(
@@ -189,24 +191,19 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             return videoDataResolution;
         }
 
-        private async Task<string?> DownloadThumbnailAsync(VideoData videoData)
+        private async Task<string?> DownloadThumbnailAsync(
+            Video videoManifest,
+            int videoHeight)
         {
-            if (videoData is null)
-                throw new ArgumentNullException(nameof(videoData));
-            if (string.IsNullOrWhiteSpace(videoData.YoutubeUrl))
-                throw new InvalidOperationException("Invalid youtube url");
-
-            // Get manifest data
-            var videoManifest = await youTubeClient.Videos.GetAsync(videoData.YoutubeUrl).ConfigureAwait(false);
-
+            // Find thumbnails for specific area
             var url = videoManifest.Thumbnails
-                .OrderByDescending(thumbnail => thumbnail.Resolution.Area)
-                .FirstOrDefault()
+                .FirstOrDefault(video => video.Resolution.Height == videoHeight)
                 ?.Url;
+            url = url ?? videoManifest.Thumbnails.OrderByDescending(video => video.Resolution.Area).FirstOrDefault()?.Url;
             if (string.IsNullOrWhiteSpace(url))
                 return null;
 
-            string filePath = $"{tmpFolder}/{videoManifest.Id}.jpg";
+            string filePath = $"{tmpFolder}/{videoManifest.Id}_{videoHeight}.jpg";
             var i = 0;
             while (i < MAX_RETRY)
                 try

@@ -139,8 +139,11 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             throw new InvalidOperationException($"Some error during get batch status");
         }
 
-        public async Task OfferResourceAsync(string hash)
+        public async Task OfferResourceAsync(string? hash)
         {
+            if (string.IsNullOrWhiteSpace(hash))
+                return;
+
             await ethernaUserClients.GatewayClient.ResourcesClient.OffersPostAsync(hash).ConfigureAwait(false);
         }
     }

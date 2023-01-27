@@ -23,7 +23,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
         private readonly EthernaUserClientsAdapter ethernaClientService;
         private readonly string userEthAddr;
         private readonly HttpClient httpClient;
-        
+
 
         // Const.
         private readonly TimeSpan BATCH_CHECK_TIME = new(0, 0, 0, 10);
@@ -104,11 +104,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                 timeWaited += BATCH_CHECK_TIME.TotalSeconds;
             } while (!batchUsable);
 
-            // Upload thumbnail only one time.
-            var thumbnailReference = await UploadThumbnailAsync(pinVideo, videoData, batchId).ConfigureAwait(false);
-            //if (offerVideo)
-                await ethernaClientService.OfferResourceAsync(thumbnailReference).ConfigureAwait(false);
-
+            // Upload video reoslutions.
             foreach (var specificVideoResolution in videoData.VideoDataResolutions)
             {
                 // Upload video.
@@ -116,16 +112,19 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                 specificVideoResolution.SetUploadedVideoReference(videoReference);
                 if (offerVideo)
                     await ethernaClientService.OfferResourceAsync(specificVideoResolution.UploadedVideoReference!).ConfigureAwait(false);
+
+                await UploadThumbnailAsync(pinVideo, specificVideoResolution, batchId).ConfigureAwait(false);
+                //if (offerVideo)
+                await ethernaClientService.OfferResourceAsync(specificVideoResolution.UploadedThumbnailReference!).ConfigureAwait(false);
             }
 
             // Upload metadata.
             var hashMetadataReference = await UploadMetadataAsync(
                 videoData,
                 batchId,
-                thumbnailReference,
                 pinVideo).ConfigureAwait(false);
             //if (offerVideo)
-                await ethernaClientService.OfferResourceAsync(hashMetadataReference).ConfigureAwait(false);
+            await ethernaClientService.OfferResourceAsync(hashMetadataReference).ConfigureAwait(false);
 
             // Sync Index.
             Console.WriteLine("Video indexing in progress...");
@@ -171,7 +170,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             try
             {
                 await File.WriteAllTextAsync(tmpMetadata, JsonUtility.ToJson(videoManifestDto)).ConfigureAwait(false);
-                
+
                 var i = 0;
                 while (i < MAX_RETRY &&
                     string.IsNullOrWhiteSpace(hashMetadataReference))
@@ -241,7 +240,6 @@ namespace Etherna.DevconArchiveVideoImporter.Services
         private async Task<string> UploadMetadataAsync(
             VideoData videoData,
             string batchId,
-            string thumbnailReference,
             bool swarmPin)
         {
             if (videoData is null)
@@ -251,18 +249,42 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             if (string.IsNullOrWhiteSpace(videoData.Description))
                 throw new InvalidOperationException("Description not defined");
 
-            // Thumbnail.
-            MetadataImageInput? swarmImageRaw = null;
-            if (!string.IsNullOrWhiteSpace(videoData.DownloadedThumbnailPath))
+            // Get all Thumbnails.
+            Dictionary<string, string> thumbnailReferences = new();
+            var thumbnailBestResolution = 0;
+            string? downloadedThumbnailPathBestResolution = null;
+            foreach (var video in videoData.VideoDataResolutions)
             {
-                using var input = File.OpenRead(videoData.DownloadedThumbnailPath);
+                if (string.IsNullOrWhiteSpace(video.DownloadedThumbnailPath))
+                    continue;
+
+                using var input = File.OpenRead(video.DownloadedThumbnailPath);
+                using var inputStream = new SKManagedStream(input);
+                using var sourceImage = SKBitmap.Decode(inputStream);
+
+                var keyResolution = $"{sourceImage.Width}w";
+                if (!thumbnailReferences.ContainsKey(keyResolution))
+                {
+                    thumbnailReferences.Add(keyResolution, video.UploadedThumbnailReference!);
+                    if (sourceImage.Width > thumbnailBestResolution)
+                    {
+                        thumbnailBestResolution = sourceImage.Width;
+                        downloadedThumbnailPathBestResolution = video.DownloadedThumbnailPath;
+                    }
+                }
+            }
+
+            MetadataImageInput? swarmImageRaw = null;
+            if (!string.IsNullOrWhiteSpace(downloadedThumbnailPathBestResolution))
+            {
+                using var input = File.OpenRead(videoData.VideoDataResolutions.OrderByDescending(video => video.Size).First().DownloadedThumbnailPath!);
                 using var inputStream = new SKManagedStream(input);
                 using var sourceImage = SKBitmap.Decode(inputStream);
                 var hash = Blurhash.SkiaSharp.Blurhasher.Encode(sourceImage, 4, 4);
                 swarmImageRaw = new MetadataImageInput(
                     (float)sourceImage.Width / (float)sourceImage.Height,
                     hash,
-                    new Dictionary<string, string> { { $"{sourceImage.Width}w", thumbnailReference } });
+                    thumbnailReferences);
             }
 
             // Manifest.
@@ -286,9 +308,9 @@ namespace Etherna.DevconArchiveVideoImporter.Services
 
             return await UploadMetadataAsync(metadataVideo, videoData, swarmPin).ConfigureAwait(false);
         }
-        private async Task<string> UploadThumbnailAsync(
+        private async Task UploadThumbnailAsync(
             bool pinVideo,
-            VideoData videoData,
+            VideoDataResolution videoData,
             string batchId)
         {
             Console.WriteLine("Uploading thumbnail in progress...");
@@ -302,10 +324,14 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                         File.OpenRead(videoData.DownloadedThumbnailPath!),
                         Path.GetFileName(videoData.DownloadedThumbnailPath!),
                         MimeTypes.GetMimeType(Path.GetFileName(videoData.DownloadedThumbnailPath!)));
-                    return await beeNodeClient.GatewayClient!.UploadFileAsync(
+
+                    var thumbnailReference = await beeNodeClient.GatewayClient!.UploadFileAsync(
                         batchId,
                         files: new List<FileParameterInput> { fileThumbnailParameterInput },
                         swarmPin: pinVideo).ConfigureAwait(false);
+
+                    videoData.SetUploadedThumbnailReference(thumbnailReference);
+                    return;
                 }
                 catch { await Task.Delay(3500).ConfigureAwait(false); }
             throw new InvalidOperationException("Some error during upload of thumbnail");
