@@ -12,11 +12,10 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using YoutubeExplode.Common;
-using YoutubeExplode.Videos;
 
 namespace Etherna.DevconArchiveVideoImporter.Services
 {
-    internal sealed class VideoUploaderService : IVideoUploaderService
+    public sealed class VideoUploaderService : IVideoUploaderService
     {
         // Fields.
         private readonly BeeNodeClient beeNodeClient;
@@ -137,8 +136,13 @@ namespace Etherna.DevconArchiveVideoImporter.Services
         public async Task<string> UploadMetadataAsync(
             VideoManifestDto videoManifestDto,
             VideoData videoData,
-            bool swarmPin)
+            bool pinVideo)
         {
+            if (videoManifestDto is null)
+                throw new ArgumentNullException(nameof(videoManifestDto));
+            if (videoData is null)
+                throw new ArgumentNullException(nameof(videoData));
+
             var metadataManifestInsertInput = new MetadataManifestInsertInput(
                 DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 userEthAddr,
@@ -157,7 +161,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             return await UploadMetadataAsync(
                 metadataManifestInsertInput,
                 videoData,
-                swarmPin).ConfigureAwait(false);
+                pinVideo).ConfigureAwait(false);
         }
 
         public async Task<string> UploadMetadataAsync(
@@ -165,6 +169,11 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             VideoData videoData,
             bool swarmPin)
         {
+            if (videoManifestDto is null)
+                throw new ArgumentNullException(nameof(videoManifestDto));
+            if (videoData is null)
+                throw new ArgumentNullException(nameof(videoData));
+
             var tmpMetadata = Path.GetTempFileName();
             var hashMetadataReference = "";
             try

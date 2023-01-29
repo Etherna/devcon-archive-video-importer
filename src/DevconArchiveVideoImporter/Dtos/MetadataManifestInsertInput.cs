@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Etherna.DevconArchiveVideoImporter.Dtos
 {
-    internal sealed class MetadataManifestInsertInput
+    public sealed class MetadataManifestInsertInput
     {
         // Constructors.
         public MetadataManifestInsertInput(

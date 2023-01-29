@@ -3,7 +3,7 @@ using Etherna.BeeNet.Clients.GatewayApi;
 
 namespace Etherna.DevconArchiveVideoImporter.Utilities
 {
-    internal sealed class CommonConst
+    public sealed class CommonConst
     {
         public const int BEENODE_GATEWAYPORT = 443;
         public const GatewayApiVersion BEENODE_GATEWAYVERSION = GatewayApiVersion.v3_0_2;

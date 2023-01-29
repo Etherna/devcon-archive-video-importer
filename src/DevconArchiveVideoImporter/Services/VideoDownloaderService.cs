@@ -14,7 +14,7 @@ using YoutubeExplode.Videos.Streams;
 
 namespace Etherna.DevconArchiveVideoImporter.Services
 {
-    internal sealed class VideoDownloaderService : IVideoDownloaderService, IDisposable
+    public sealed class VideoDownloaderService : IVideoDownloaderService, IDisposable
     {
         // Const.
         private const int MAX_RETRY = 3;
@@ -199,7 +199,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             var url = videoManifest.Thumbnails
                 .FirstOrDefault(video => video.Resolution.Height == videoHeight)
                 ?.Url;
-            url = url ?? videoManifest.Thumbnails.OrderByDescending(video => video.Resolution.Area).FirstOrDefault()?.Url;
+            url ??= videoManifest.Thumbnails.OrderByDescending(video => video.Resolution.Area).FirstOrDefault()?.Url;
             if (string.IsNullOrWhiteSpace(url))
                 return null;
 
