@@ -1,11 +1,9 @@
 ﻿using Etherna.BeeNet;
-using Etherna.BeeNet.Clients.DebugApi;
 using Etherna.DevconArchiveVideoImporter.Dtos;
 using Etherna.DevconArchiveVideoImporter.Services;
 using Etherna.DevconArchiveVideoImporter.SSO;
 using Etherna.DevconArchiveVideoImporter.Utilities;
 using Etherna.ServicesClient;
-using IdentityModel.OidcClient;
 using System;
 using System.IO;
 using System.Linq;

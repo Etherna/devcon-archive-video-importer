@@ -148,7 +148,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                 userEthAddr,
                 videoManifestDto.BatchId,
                 videoData.Description,
-                videoData.Duration,
+                videoData.VideoDataResolutions.First().Duration,
                  $"720p",
                  JsonUtility.ToJson(new MetadataPersonalDataDto { Mode = MetadataUploadMode.DevconImporter, VideoId = videoData.YoutubeId! }),
                  new MetadataImageInput(
@@ -302,7 +302,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                 userEthAddr,
                 batchId,
                 videoData.Description,
-                videoData.Duration,
+                videoData.VideoDataResolutions.First().Duration,
                  $"{videoData.VideoDataResolutions.First().Resolution}",
                  JsonUtility.ToJson(new MetadataPersonalDataDto { Mode = MetadataUploadMode.DevconImporter, VideoId = videoData.YoutubeId! }),
                  swarmImageRaw,
