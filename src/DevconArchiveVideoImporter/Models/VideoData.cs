@@ -12,7 +12,6 @@ namespace Etherna.DevconArchiveVideoImporter.Models
         public string Id { get; set; } = default!;
         public string? MdFilepath { get; set; }
         public string Description { get; set; } = default!;
-        public int Duration { get; set; }
         public int Edition { get; set; }
         public string? EthernaIndex { get; set; }
         public string? EthernaPermalink { get; set; }

@@ -141,7 +141,8 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                 Path.Combine(tmpFolder, filename),
                 videoName,
                 videoStreamInfo.VideoQuality.Label);
-            var duration = videoManifest.Duration ?? TimeSpan.Zero;
+            if (videoManifest.Duration is null)
+                throw new InvalidOperationException("Invalid duration video");
 
             var i = 0;
             var downloaded = false;
@@ -186,7 +187,7 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             videoDataResolution.SetVideoInfo(
                 videoName,
                 videoStreamInfo.Size.Bytes,
-                (int)duration.TotalSeconds);
+                (int)videoManifest.Duration.Value.TotalSeconds);
 
             return videoDataResolution;
         }

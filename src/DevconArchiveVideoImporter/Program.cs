@@ -1,12 +1,14 @@
 ﻿using Etherna.BeeNet;
 using Etherna.BeeNet.Clients.DebugApi;
 using Etherna.DevconArchiveVideoImporter.Dtos;
+using Etherna.DevconArchiveVideoImporter.Models;
 using Etherna.DevconArchiveVideoImporter.Services;
 using Etherna.DevconArchiveVideoImporter.SSO;
 using Etherna.DevconArchiveVideoImporter.Utilities;
 using Etherna.ServicesClient;
 using IdentityModel.OidcClient;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -70,9 +72,6 @@ namespace Etherna.DevconArchiveVideoImporter
                 Directory.CreateDirectory(tmpFolder);
             var tmpFolderFullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, tmpFolder);
 
-            // Read from files md.
-            var mdVideos = MdVideoParserService.ToVideoDataDtos(sourceFolderPath);
-
             // Sign with SSO and create auth client.
             var authResult = await SignServices.SigInSSO().ConfigureAwait(false);
             if (authResult.IsError)
@@ -110,20 +109,52 @@ namespace Etherna.DevconArchiveVideoImporter
                 ethernaClientService,
                 userEthAddr,
                 httpClient);
+
+            // Read from files md.
+            //var allVideoMinimalInfos = MdVideoParserService.ToVideoDataMinimalInfoDtos(sourceFolderPath);
+            var allVideoMinimalInfos = await YouTubeChannelVideoParserServices.ToVideoDataMinimalInfoDtosAsync("https://www.youtube.com/@PolkadotNetwork").ConfigureAwait(false);
+            List<VideoData> allVideoDataInfos = new();
+
+            // User video imported
+            var importedVideos = await ethernaClientService.GetAllUserVideoAsync(userEthAddr).ConfigureAwait(false);
+
             // Import each video.
             var indexParams = await ethernaClientService.GetSystemParametersAsync().ConfigureAwait(false);
             var videoCount = 0;
-            var totalVideo = mdVideos.Count();
-            foreach (var video in mdVideos)
+            var totalVideo = allVideoMinimalInfos.Count();
+            foreach (var videoMinimal in allVideoMinimalInfos)
             {
                 try
                 {
+                    // Take all video info.
+                    //var video = MdVideoParserService.ToVideoDataDtos(videoMinimal.Uri);
+                    var video = await YouTubeChannelVideoParserServices.ToVideoDataDtosAsync(videoMinimal.Uri).ConfigureAwait(false);
+                    if (video is null)
+                    {
+                        Console.ForegroundColor = ConsoleColor.DarkRed;
+                        Console.WriteLine($"Error: Unable to get data from {videoMinimal.Uri}");
+                        Console.ResetColor();
+                        continue;
+                    }
+                    allVideoDataInfos.Add(video);
+
                     Console.WriteLine("===============================");
                     Console.WriteLine($"Start processing video #{++videoCount} of #{totalVideo}");
                     Console.WriteLine($"Title: {video.Title}");
 
+                    // Find index video Id.
+                    var indexVideoId = importedVideos.Select(videoData =>
+                        new
+                        {
+                            IndexVideoId = videoData.Id,
+                            PersonalData = JsonUtility.FromJson<MetadataPersonalDataDto>(videoData?.LastValidManifest?.PersonalData)
+                        })
+                        .Where(v => v?.PersonalData?.VideoId == video.YoutubeId)
+                        .FirstOrDefault()
+                        ?.IndexVideoId;
+
                     // Check last valid manifest, if exist.
-                    var lastValidManifest = await ethernaClientService.GetLastValidManifestAsync(video.IndexVideoId).ConfigureAwait(false);
+                    var lastValidManifest = await ethernaClientService.GetLastValidManifestAsync(indexVideoId).ConfigureAwait(false);
                     if (lastValidManifest is not null)
                     {
                         // Check if manifest contain the same url of current md file.
@@ -237,14 +268,13 @@ namespace Etherna.DevconArchiveVideoImporter
             if (deleteOldVideo)
             {
                 // Get video indexed
-                var importedVideos = await ethernaClientService.GetAllUserVideoAsync(userEthAddr).ConfigureAwait(false);
                 var videoIds = importedVideos.Select(
                         videoData => JsonUtility.FromJson<MetadataPersonalDataDto>(videoData?.LastValidManifest?.PersonalData)?.VideoId)
                     .Where(v => !string.IsNullOrWhiteSpace(v))
                     .ToList();
 
                 // Get video indexed but not in repository files *.md
-                var removableIds = videoIds.Except(mdVideos.Select(repVideo => repVideo.YoutubeId).ToList());
+                var removableIds = videoIds.Except(allVideoDataInfos.Select(repVideo => repVideo.YoutubeId).ToList());
                 foreach (var videoId in removableIds)
                 {
                     try
@@ -271,8 +301,7 @@ namespace Etherna.DevconArchiveVideoImporter
             // User video.
             if (deleteInvalidVideo)
             {
-                var videos = await ethernaClientService.GetAllUserVideoAsync(userEthAddr).ConfigureAwait(false);
-                foreach (var video in videos)
+                foreach (var video in importedVideos)
                 {
                     if (video.LastValidManifest is not null &&
                         !string.IsNullOrWhiteSpace(video.LastValidManifest.PersonalData))
@@ -312,6 +341,6 @@ namespace Etherna.DevconArchiveVideoImporter
             return strValue;
         }
 
-        
+
     }
 }

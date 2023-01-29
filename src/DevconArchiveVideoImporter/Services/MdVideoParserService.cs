@@ -13,12 +13,13 @@ namespace Etherna.DevconArchiveVideoImporter.Services
         // Fields.
         public static readonly string[] _keywordForArrayString = Array.Empty<string>();
         public static readonly string[] _keywordSkips = { "IMAGE", "IMAGEURL", "IPFSHASH", "EXPERTISE", "TRACK", "KEYWORDS", "TAGS", "SPEAKERS", "SOURCEID" };
+        public static readonly string[] _keywordMinimal = { "SOURCEID", "EDITION" };
         public static readonly string[] _keywordNames = { "IMAGE", "IMAGEURL", "EDITION", "TITLE", "DESCRIPTION", "YOUTUBEURL", "IPFSHASH", "DURATION", "EXPERTISE", "TYPE", "TRACK", "KEYWORDS", "TAGS", "SPEAKERS", "ETHERNAINDEX", "ETHERNAPERMALINK", "SOURCEID" };
 
         // Methods.
-        public static IEnumerable<VideoData> ToVideoDataDtos(string folderRootPath)
+        public static IEnumerable<VideoDataMinimalInfo> ToVideoDataMinimalInfoDtos(string folderRootPath)
         {
-            var videoDataInfoDtos = new List<VideoData>();
+            var videoDataInfoDtos = new List<VideoDataMinimalInfo>();
             var files = Directory.GetFiles(folderRootPath, "*.md", SearchOption.AllDirectories);
 
             Console.WriteLine($"Total files: {files.Length}");
@@ -26,65 +27,93 @@ namespace Etherna.DevconArchiveVideoImporter.Services
             foreach (var sourceFile in files)
             {
                 var itemConvertedToJson = new StringBuilder();
-                var markerLine = 0;
-                var keyFound = 0;
-                var descriptionExtraRows = new List<string>();
+                bool keyFound = false; ;
                 foreach (var line in File.ReadLines(sourceFile))
                 {
                     if (string.IsNullOrWhiteSpace(line))
                         continue;
-                    if (_keywordSkips.Any(keyToSkip =>
-                        line.StartsWith(keyToSkip, StringComparison.InvariantCultureIgnoreCase)))
+                    if (!_keywordMinimal.Any(keyToAccept =>
+                        line.StartsWith(keyToAccept, StringComparison.InvariantCultureIgnoreCase)))
                         continue;
 
-                    if (line == "---")
-                    {
-                        markerLine++;
+                    var lineParse = FormatLineForJson(
+                                                line.Replace("edition", "OrderIndex", StringComparison.InvariantCultureIgnoreCase), 
+                                                keyFound, 
+                                                null);
+                    keyFound = true;
+                    itemConvertedToJson.Append(lineParse);
+                }
 
-                        if (markerLine == 1)
-                            itemConvertedToJson.AppendLine("{");
-                        else if (markerLine == 2)
-                        {
-                            itemConvertedToJson.AppendLine("}");
-
-                            VideoData? videoDataInfoDto = null;
-                            try
-                            {
-                                videoDataInfoDto = JsonSerializer.Deserialize<VideoData>(
-                                    itemConvertedToJson.ToString(),
+                var videoDataMinimalInfoDto = JsonSerializer.Deserialize<VideoDataMinimalInfo>(
+                                    $"{{{itemConvertedToJson}}}",
                                     new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                                if (videoDataInfoDto is not null)
-                                {
-                                    videoDataInfoDto.SetData(
-                                        sourceFile!.Replace(folderRootPath, "", StringComparison.InvariantCultureIgnoreCase),
-                                        sourceFile);
-                                    videoDataInfoDtos.Add(videoDataInfoDto);
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                Console.WriteLine($"{ex.Message} \n Unable to parse file: {sourceFile}");
-                            }
+                if (videoDataMinimalInfoDto is not null)
+                {
+                    videoDataMinimalInfoDto.Uri = sourceFile;
+                    videoDataInfoDtos.Add(videoDataMinimalInfoDto);
+                }
+                    
+            }
 
-                            markerLine = 0;
-                            keyFound = 0;
-                            itemConvertedToJson = new StringBuilder();
-                            videoDataInfoDto?.AddDescription(descriptionExtraRows);
-                        }
-                    }
-                    else
+            return videoDataInfoDtos.OrderBy(item => item.OrderIndex);
+        }
+        
+        public static VideoData? ToVideoDataDtos(string uri)
+        {
+            var itemConvertedToJson = new StringBuilder();
+            var markerLine = 0;
+            var keyFound = 0;
+            var descriptionExtraRows = new List<string>();
+            VideoData? videoDataInfoDto = null;
+            foreach (var line in File.ReadLines(uri))
+            {
+                if (string.IsNullOrWhiteSpace(line))
+                    continue;
+                if (_keywordSkips.Any(keyToSkip =>
+                    line.StartsWith(keyToSkip, StringComparison.InvariantCultureIgnoreCase)))
+                    continue;
+
+                if (line == "---")
+                {
+                    markerLine++;
+
+                    if (markerLine == 1)
+                        itemConvertedToJson.AppendLine("{");
+                    else if (markerLine == 2)
                     {
-                        keyFound++;
-                        itemConvertedToJson.AppendLine(FormatLineForJson(line, keyFound > 1, descriptionExtraRows));
+                        itemConvertedToJson.AppendLine("}");
+                        try
+                        {
+                            videoDataInfoDto = JsonSerializer.Deserialize<VideoData>(
+                                itemConvertedToJson.ToString(),
+                                new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                            videoDataInfoDto?.SetData(
+                                    uri!.Replace(uri, "", StringComparison.InvariantCultureIgnoreCase),
+                                    uri);
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"{ex.Message} \n Unable to parse file: {uri}");
+                        }
+
+                        markerLine = 0;
+                        keyFound = 0;
+                        itemConvertedToJson = new StringBuilder();
+                        videoDataInfoDto?.AddDescription(descriptionExtraRows);
                     }
+                }
+                else
+                {
+                    keyFound++;
+                    itemConvertedToJson.AppendLine(FormatLineForJson(line, keyFound > 1, descriptionExtraRows));
                 }
             }
 
-            return videoDataInfoDtos.OrderBy(item => item.Edition);
+            return videoDataInfoDto;
         }
 
         // Helper.
-        private static string FormatLineForJson(string line, bool havePreviusRow, List<string> descriptionExtraRows)
+        private static string FormatLineForJson(string line, bool havePreviusRow, List<string>? descriptionExtraRows)
         {
             if (string.IsNullOrWhiteSpace(line))
                 return "";
@@ -104,7 +133,8 @@ namespace Etherna.DevconArchiveVideoImporter.Services
                 }
 
             // Prevent multiline description error 
-            if (!_keywordNames.Any(keywordName =>
+            if (descriptionExtraRows is not null &&
+                !_keywordNames.Any(keywordName =>
                     line.StartsWith(keywordName, StringComparison.InvariantCultureIgnoreCase)))
             {
                 descriptionExtraRows.Add(line);
