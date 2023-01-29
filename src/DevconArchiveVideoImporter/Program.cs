@@ -21,7 +21,9 @@ namespace Etherna.DevconArchiveVideoImporter
         // Consts.
         private const string HelpText =
             "DevconArchiveVideoImporter help:\n\n" +
-            "-s\tSource folder path with *.md files to import\n" +
+            "-md\tSource folder path with *.md files to import\n" +
+            "-ch\tYoutube channel url\n" +
+            "-yt\tYoutube channel url\n" +
             "-f\tFree video offer by creator\n" +
             "-p\tPin video\n" +
             "-d\tDelete old videos that are no longer in the .MD files\n" +
@@ -43,7 +45,9 @@ namespace Etherna.DevconArchiveVideoImporter
             {
                 switch (args[i])
                 {
-                    case "-s": sourceFolderPath = args[++i]; break;
+                    case "-md": sourceFolderPath = args[++i]; break;
+                    case "-ch": sourceFolderPath = args[++i]; break;
+                    case "-yt": sourceFolderPath = args[++i]; break;
                     case "-ff": ffMpegFolderPath = args[++i]; break;
                     case "-f": offerVideo = true; break;
                     case "-p": pinVideo = true; break;
